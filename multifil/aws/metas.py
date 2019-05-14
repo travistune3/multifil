@@ -141,7 +141,7 @@ def emit(path_local, path_s3, time,  poisson=0.0, ls=None, z_line=None,
     Parameters
     ----------
     path_local: string
-        The local (absolute or relative) directory to which we save both
+        The local (absoluzte or relative) directory to which we save both
         emitted files and run output.
     path_s3: string
         The s3 bucket (and optional folder) to save run output to and to which
@@ -215,4 +215,5 @@ def emit(path_local, path_s3, time,  poisson=0.0, ls=None, z_line=None,
         output_filename = os.path.join(path_local, name+'.meta.json')
         with open(output_filename , 'w') as metafile:
             json.dump(rund, metafile, indent=4)
+        return rund, output_filename
     return rund

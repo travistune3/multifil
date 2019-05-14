@@ -44,11 +44,13 @@ class manage:
             Whether to complete the run without further intervention or treat
             as an interactive session.
         """
-        self.s3 = s3()
         self.uuid = metafile.split('/')[-1].split('.')[0]
         self.working_dir = self._make_working_dir(self.uuid)
         self.metafile = self._parse_metafile_location(metafile)
         self.meta = self.unpack_meta(self.metafile)
+        self.s3 = None  # don't create s3 connection
+        if self.meta['path_s3'] is not None:    # unless we specify
+            self.s3 = s3()
         self.sarc = self.unpack_meta_to_sarc(self.meta)
         if unattended:
             try:
