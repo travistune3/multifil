@@ -92,7 +92,7 @@ class manage:
         actin_permissiveness = none_if_list('actin_permissiveness')
         # Time dependent values
         time_dep_dict = {}
-        for prop in ['z_line', 'actin_permissiveness']:
+        for prop in ['z_line', 'actin_permissiveness', 'lattice_spacing']:
             if type(meta[prop]) is list:
                 time_dep_dict[prop] = meta[prop]
         # Instantiate sarcomere
