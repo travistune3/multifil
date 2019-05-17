@@ -55,7 +55,7 @@ def time(timestep_length, run_length_in_ms):
     """
     return np.arange(0, run_length_in_ms, timestep_length)
 
-def zline_workloop(offset, amp, freq, time):
+def zline_workloop(mean, amp, freq, time):
     """A sinusoidal oscillatory length trace.
 
     Parameters:
@@ -65,7 +65,7 @@ def zline_workloop(offset, amp, freq, time):
         time: time trace in ms to provide length trace for
     """
     period = 1000/freq
-    zline = offset + 0.5 * amp * np.cos(2*np.pi*time/period)
+    zline = mean + 0.5 * amp * np.cos(2*np.pi*time/period)
     return zline
 
 def zline_forcevelocity(L0, hold_time, L0_per_sec, time):
