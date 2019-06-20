@@ -83,7 +83,7 @@ def zline_forcevelocity(L0, hold_time, L0_per_sec, time):
     return zline
 
 def actin_permissiveness_workloop(freq, phase, stim_duration,
-                                  influx_time, half_life, time):
+                                  influx_time, half_life, time, max_signal=1.0):
     """Requires cycle frequency, phase relative to longest length
     point, duration of on time, time from 10 to 90% influx level, and
     the half-life of the Ca2+ out-pumping.
@@ -93,7 +93,7 @@ def actin_permissiveness_workloop(freq, phase, stim_duration,
     # Things we need to know for the shape of a single cycle
     decay_rate = np.log(1/2)/half_life
     growth_rate = 0.5*influx_time
-    max_signal = 1.0
+    max_signal = max_signal
     # Things we need to know for the cyclical nature of the signal
     number_of_timesteps = len(time) #for ease of reading
     timestep_length = np.diff(time)[0]
@@ -132,7 +132,8 @@ def actin_permissiveness_workloop(freq, phase, stim_duration,
 
 ## Configure a run via a saved meta file
 def emit(path_local, path_s3, time,  poisson=0.0, ls=None, z_line=None,
-    actin_permissiveness=None, comment = None, write = True, **kwargs):
+         actin_permissiveness=None, comment = None, 
+         write = True, titin_params=None, **kwargs):
     """Produce a structured JSON file that will be consumed to create a run
 
     Import emit into an interactive workspace and populate a directory with
@@ -205,6 +206,7 @@ def emit(path_local, path_s3, time,  poisson=0.0, ls=None, z_line=None,
     rund['lattice_spacing'] = ls
     rund['z_line'] = z_line
     rund['actin_permissiveness'] = actin_permissiveness
+    rund['titin_params'] = titin_params
     rund['timestep_length'] = np.diff(time)[0]
     rund['timestep_number'] = len(time)
     ## Include kwargs

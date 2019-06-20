@@ -47,8 +47,15 @@ class Titin:
         ## calculate forces
         self.rest = 120 #nm, no citation
         # Create the constants that determine force NOTE IMPROVE DOC
-        self.a = a
-        self.b = b
+        # NOTE: IMPROVE DEFAULT ARGUMENT LOGIC - AMA19JUN19
+        if a is None:
+            self.a = 240
+        else:
+            self.a = a
+        if b is None:
+            self.b = 0.0045
+        else:
+            self.b = b
 
     def to_dict(self):
         """Create a JSON compatible representation of titin

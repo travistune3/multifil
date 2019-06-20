@@ -19,7 +19,7 @@ class hs:
     """The half-sarcomere and ways to manage it"""
     def __init__(self, lattice_spacing=None, z_line=None, poisson=None,
                 actin_permissiveness=None, timestep_len=1,
-                time_dependence=None, starts=None):
+                time_dependence=None, starts=None, titin_params=None):
         """ Create the data structure that is the half-sarcomere model
 
         Parameters:
@@ -269,33 +269,69 @@ class hs:
         # |                   a2                a0           |
         # |--------------------------------------------------|
         ## CHECK_JDP ## Link Thick filament to titin
+        ## Checked - AMA 13JUN19 - loop format:
+        '''loop format:
+            linklist = []
+            num = 0
+            anlist = [0,1,2,2,3,0]
+            for half in range(0, 2):
+                mflist = [0,1,2]
+                aflist = [1,2,2]
+
+                for quart in range(0, 2): 
+                    for eighth in range(0, 2):
+                        for triple in range(0, 3):
+                            mn = eighth + half * 2
+                            mf = mflist[triple]
+                            an = anlist[triple + eighth * 3]
+                            af = aflist[triple]
+                            linklist.append((num, mn, mf, an, af))
+                            num += 1
+                    mflist = [5,4,3]
+                    aflist = [1,0,0]
+                    for i in range(0,len(anlist)):
+                        anlist[i] = anlist[i] - half * 8 + 4
+                anlist = [5,6,7,7,4,5]
+
+            for item in linklist:
+                print("ti.Titin(self, " + str(item[0]) + ", ti_thick(" +
+                      str(item[1]) + ", " + str(item[2]) + "), ti_thin(" +
+                      str(item[3]) + ", " + str(item[4]) + "), a=a, b=b),")'''
+        a = None
+        b = None
+        if titin_params is not None:
+            a = titin_params[0]
+            b = titin_params[1]
         ti_thick = lambda i, j: self.thick[i].thick_faces[j]
         ti_thin = lambda i, j: self.thin[i].thin_faces[j]
         self.titin = (
-            ti.Titin(self, 0, ti_thick(0, 0), ti_thin(0, 1)),
-            ti.Titin(self, 1, ti_thick(0, 1), ti_thin(1, 2)),
-            ti.Titin(self, 2, ti_thick(0, 2), ti_thin(2, 2)),
-            ti.Titin(self, 3, ti_thick(1, 0), ti_thin(2, 1)),
-            ti.Titin(self, 4, ti_thick(1, 1), ti_thin(3, 2)),
-            ti.Titin(self, 5, ti_thick(1, 2), ti_thin(0, 2)),
-            ti.Titin(self, 6, ti_thick(0, 5), ti_thin(4, 1)),
-            ti.Titin(self, 7, ti_thick(0, 4), ti_thin(5, 0)),
-            ti.Titin(self, 8, ti_thick(0, 3), ti_thin(6, 0)),
-            ti.Titin(self, 9, ti_thick(1, 5), ti_thin(6, 1)),
-            ti.Titin(self, 10, ti_thick(1, 4), ti_thin(7, 0)),
-            ti.Titin(self, 11, ti_thick(1, 3), ti_thin(4, 0)),
-            ti.Titin(self, 12, ti_thick(2, 0), ti_thin(5, 1)),
-            ti.Titin(self, 13, ti_thick(2, 1), ti_thin(6, 2)),
-            ti.Titin(self, 14, ti_thick(2, 2), ti_thin(7, 2)),
-            ti.Titin(self, 15, ti_thick(3, 0), ti_thin(7, 1)),
-            ti.Titin(self, 16, ti_thick(3, 1), ti_thin(4, 2)),
-            ti.Titin(self, 17, ti_thick(3, 2), ti_thin(5, 2)),
-            ti.Titin(self, 18, ti_thick(2, 5), ti_thin(1, 1)),
-            ti.Titin(self, 19, ti_thick(2, 4), ti_thin(2, 0)),
-            ti.Titin(self, 20, ti_thick(2, 3), ti_thin(3, 0)),
-            ti.Titin(self, 21, ti_thick(3, 5), ti_thin(3, 1)),
-            ti.Titin(self, 22, ti_thick(3, 4), ti_thin(0, 0)),
-            ti.Titin(self, 23, ti_thick(3, 3), ti_thin(1, 0)),
+            ti.Titin(self, 0, ti_thick(0, 0), ti_thin(0, 1), a=a, b=b),
+            ti.Titin(self, 1, ti_thick(0, 1), ti_thin(1, 2), a=a, b=b),
+            ti.Titin(self, 2, ti_thick(0, 2), ti_thin(2, 2), a=a, b=b),
+            ti.Titin(self, 3, ti_thick(1, 0), ti_thin(2, 1), a=a, b=b),
+            ti.Titin(self, 4, ti_thick(1, 1), ti_thin(3, 2), a=a, b=b),
+            ti.Titin(self, 5, ti_thick(1, 2), ti_thin(0, 2), a=a, b=b),
+            
+            ti.Titin(self, 6, ti_thick(0, 5), ti_thin(4, 1), a=a, b=b),
+            ti.Titin(self, 7, ti_thick(0, 4), ti_thin(5, 0), a=a, b=b),
+            ti.Titin(self, 8, ti_thick(0, 3), ti_thin(6, 0), a=a, b=b),
+            ti.Titin(self, 9, ti_thick(1, 5), ti_thin(6, 1), a=a, b=b),
+            ti.Titin(self, 10, ti_thick(1, 4), ti_thin(7, 0), a=a, b=b),
+            ti.Titin(self, 11, ti_thick(1, 3), ti_thin(4, 0), a=a, b=b),
+            
+            ti.Titin(self, 12, ti_thick(2, 0), ti_thin(5, 1), a=a, b=b),
+            ti.Titin(self, 13, ti_thick(2, 1), ti_thin(6, 2), a=a, b=b),
+            ti.Titin(self, 14, ti_thick(2, 2), ti_thin(7, 2), a=a, b=b),
+            ti.Titin(self, 15, ti_thick(3, 0), ti_thin(7, 1), a=a, b=b),
+            ti.Titin(self, 16, ti_thick(3, 1), ti_thin(4, 2), a=a, b=b),
+            ti.Titin(self, 17, ti_thick(3, 2), ti_thin(5, 2), a=a, b=b),
+            
+            ti.Titin(self, 18, ti_thick(2, 5), ti_thin(1, 1), a=a, b=b),
+            ti.Titin(self, 19, ti_thick(2, 4), ti_thin(2, 0), a=a, b=b),
+            ti.Titin(self, 20, ti_thick(2, 3), ti_thin(3, 0), a=a, b=b),
+            ti.Titin(self, 21, ti_thick(3, 5), ti_thin(3, 1), a=a, b=b),
+            ti.Titin(self, 22, ti_thick(3, 4), ti_thin(0, 0), a=a, b=b),
+            ti.Titin(self, 23, ti_thick(3, 3), ti_thin(1, 0), a=a, b=b),
         )
 
     def to_dict(self):
