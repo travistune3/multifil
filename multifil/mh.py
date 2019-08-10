@@ -215,7 +215,7 @@ class SingleSpringHead:
         A = 2000  # From Tanner, 2008 Pg 1209
         ## Calculate the binding probability
         rate = (A * sqrt(k_xb / (2 * pi)) *
-                m.exp(-.5 * k_xb * (bs[0] - xb_0)**2)) * self.timestep
+                m.exp(-.5 * k_xb * (bs[0] - xb_0)*(bs[0] - xb_0))) * self.timestep
         return float(rate)
 
     def _r21(self, bs):
@@ -286,7 +286,7 @@ class SingleSpringHead:
         N = 40
         P = 20
         ## Based on the energy in the tight state
-        rate = (sqrt(k_xb) * (sqrt(M * (bs[0]-4.76)**2) -
+        rate = (sqrt(k_xb) * (sqrt(M * (bs[0]-4.76)*(bs[0]-4.76)) -
                 N * (bs[0]-4.76)) + P) * self.timestep
         return float(rate)
 
@@ -305,11 +305,11 @@ class SingleSpringHead:
             k_xb = self.g.constant(state)
             xb_0 = self.g.rest(state)
             x = tip_location[0]
-            return self.alpha * -self.deltaG + k_xb * (x - xb_0)**2
+            return self.alpha * -self.deltaG + k_xb * (x - xb_0)*(x - xb_0)
         elif state == "tight":
             k_xb = self.g.constant(state)
             x = tip_location[0]
-            return self.eta * -self.deltaG + k_xb * x**2
+            return self.eta * -self.deltaG + k_xb * x*x
 
 
 class Head:
@@ -484,7 +484,7 @@ class Head:
 
         ## The binding rate is dependent on the exp of the dist
         # Rate = \tau * \exp^{-dist^2}
-        rate = 72 * m.exp(-distance**2)
+        rate = 72 * m.exp(-distance*distance)
         ## Return the rate
         return rate
 

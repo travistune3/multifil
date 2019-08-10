@@ -82,6 +82,69 @@ def zline_forcevelocity(L0, hold_time, L0_per_sec, time):
         zline.append(zline[-1] - nm_per_step)
     return zline
 
+def actin_permissiveness_time_independent_workloop(freq, phase, influx_factor, duty_factor, half_life, time, max_signal=1.0, min_signal=0.054):
+    steps_per_millis = 0
+    timepoint = time[0]
+    while timepoint < 1.0 and steps_per_millis < len(time) - 1:
+        steps_per_millis += 1
+        timepoint = time[steps_per_millis]
+    millis_per_cycle = 1 / (freq / 1000)
+    steps_per_cycle = int(np.round(steps_per_millis * millis_per_cycle))
+    timestep_length = 1 / steps_per_millis
+    steps_on = int(duty_factor * steps_per_cycle)
+    steps_off = (steps_per_cycle - steps_on)
+    
+    print("SPC", steps_per_cycle)
+    
+    out = [min_signal]
+    max_step =  int(influx_factor * steps_per_cycle)
+    if max_step == 0:
+        max_step = 1
+    
+    growth_step = influx_factor * millis_per_cycle / 4.2
+    growth_rate = -np.log(0.5) / growth_step
+    
+    decay_step = half_life * millis_per_cycle / 4.2
+    decay_rate = np.log(0.5) / decay_step
+    
+    step = 0
+    while(len(out) < len(time) + steps_per_cycle):
+        if step == max_step - 1:
+            out.append(max_signal)
+        elif step < steps_on - 1:
+            new_val = out[-1] * (np.e ** (growth_rate * timestep_length))
+            if new_val >= max_signal:
+                out.append(max_signal)
+            elif new_val < min_signal:
+                out.append(min_signal)
+            else:
+                out.append(new_val)
+        elif step == steps_on - 1:
+            out.append(max_signal)
+        else:
+            new_val = out[-1] * (np.e ** (decay_rate * timestep_length))
+            if new_val <= min_signal:
+                out.append(min_signal)
+            else:
+                out.append(new_val)
+        step += 1
+        if step == steps_per_cycle:
+            step = 0
+    '''#Things we need to know for smoothing
+    sd = 1 #standard deviation of smoothing window in ms
+    sw = 3 #smoothing window in ms
+    base_normal = np.exp(-np.arange(-sw,sw,timestep_length)**2/(2*sd**2))
+    normal = base_normal/sum(base_normal)
+    out = np.convolve(normal, out)
+    #'''
+    
+    phase_index = steps_per_cycle * phase
+    stt = int(np.round(phase_index))
+    end = len(time) + stt
+    
+    print(phase_index, stt, end)
+    return out[stt:end]
+
 def actin_permissiveness_workloop(freq, phase, stim_duration,
                                   influx_time, half_life, time, max_signal=1.0):
     """Requires cycle frequency, phase relative to longest length
