@@ -141,7 +141,7 @@ class manage:
         """Complete a run according to the loaded meta configuration and save
         results to meta-specified s3 and local locations"""
         # Initialize data and sarc
-        self.sarcfile = sarc_file(self.sarc, self.meta, self.working_dir)
+        """no sarc file"""#self.sarcfile = sarc_file(self.sarc, self.meta, self.working_dir)
         self.datafile = data_file(self.sarc, self.meta, self.working_dir)
         # Run away
         np.random.seed()
@@ -149,7 +149,7 @@ class manage:
         for timestep in range(self.meta['timestep_number']):
             self.sarc.timestep(timestep)
             self.datafile.append()
-            self.sarcfile.append()
+            """no sarc file"""#self.sarcfile.append()
             # Update on how it is going
             self._run_status(timestep, tic, 100)
         # Finalize and save files to final locations
@@ -158,9 +158,10 @@ class manage:
         data_final_name = self.datafile.finalize()
         self._copy_file_to_final_location(data_final_name)
         self.datafile.delete() # clean up temp files
-        sarc_final_name = self.sarcfile.finalize()
-        self._copy_file_to_final_location(sarc_final_name)
-        self.sarcfile.delete() # clean up temp files
+        """no sarc file"""
+        #sarc_final_name = self.sarcfile.finalize()
+        #self._copy_file_to_final_location(sarc_final_name)
+        #self.sarcfile.delete() # clean up temp files
         self._log_it("uploading finished, done with this run")
 
     def _run_status(self, timestep, start, every):
