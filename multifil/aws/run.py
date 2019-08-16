@@ -31,7 +31,7 @@ from .. import hs
 ## Manage a local run
 class manage:
     """Run, now with extra objor flavor"""
-    def __init__(self, metafile, unattended=True):
+    def __init__(self, metafile, unattended=True, dump_every=None):
         """Create a managed instance of the sarc, optionally running it
 
         Parameters
@@ -49,6 +49,7 @@ class manage:
         self.metafile = self._parse_metafile_location(metafile)
         self.meta = self.unpack_meta(self.metafile)
         self.s3 = None  # don't create s3 connection
+        self.dump_every = dump_every
         if self.meta['path_s3'] is not None:    # unless we specify
             self.s3 = s3()
         self.sarc = self.unpack_meta_to_sarc(self.meta)
@@ -142,7 +143,10 @@ class manage:
         results to meta-specified s3 and local locations"""
         # Initialize data and sarc
         """no sarc file"""#self.sarcfile = sarc_file(self.sarc, self.meta, self.working_dir)
-        self.datafile = data_file(self.sarc, self.meta, self.working_dir)
+        if self.dump_every is None:
+            self.datafile = data_file(self.sarc, self.meta, self.working_dir)
+        else:
+            self.datafile = disk_data_file(self.sarc, self.meta, self.working_dir)
         # Run away
         np.random.seed()
         tic = time.time()
@@ -152,6 +156,8 @@ class manage:
             """no sarc file"""#self.sarcfile.append()
             # Update on how it is going
             self._run_status(timestep, tic, 100)
+            if self.dump_every is not None:
+                self._dump_dict(timestep)
         # Finalize and save files to final locations
         self._log_it("model finished, uploading")
         self._copy_file_to_final_location(self.metafile)
@@ -173,6 +179,11 @@ class manage:
             self._log_it("finished %i/%i steps, %ih%im%is left"%(
                 timestep+1, total_steps,
                 sec_left/60/60, sec_left/60%60, sec_left%60))
+            
+    def _dump_dict(self, timestep):
+        if timestep % self.dump_every == 0:
+            self.datafile.dump_and_clear()
+            self._log_it("dumped")
 
     @staticmethod
     def _log_it(message):
@@ -410,3 +421,116 @@ class s3:
             print("Size mismatch, uploading again for %s: "%local)
             key.set_contents_from_filename(local)
         return
+
+class disk_data_file:
+    def __init__(self, sarc, meta, working_dir):
+        """Generate the dictionary for use with the below data callback"""
+        self.sarc = sarc
+        self.meta = meta
+        self.working_directory = working_dir
+        data_name = '/'+self.meta['name']+'.data.json'
+        self.working_filename = self.working_directory + data_name
+        self.update_keys = ['timestep', 'z_line', 'lattice_spacing', 'axial_force', 'radial_force_y', 'radial_force_z', 'radial_tension',
+                'xb_fraction_free', 'xb_fraction_loose', 'xb_fraction_tight', 'xb_trans_12', 'xb_trans_23', 'xb_trans_31',
+                'xb_trans_21', 'xb_trans_32', 'xb_trans_13', 'xb_trans_static', 'actin_permissiveness', 'thick_displace_mean',
+                'thick_displace_max', 'thick_displace_min', 'thick_displace_std', 'thin_displace_mean', 'thin_displace_max',
+                'thin_displace_min', 'thin_displace_std']
+        self.data_dict = {
+            'name': self.meta['name'],
+            'timestep_length': self.sarc.timestep_len,
+            'timestep': [],
+            'z_line': [],
+            'lattice_spacing': [],
+            'axial_force': [],
+            'radial_force_y': [],
+            'radial_force_z': [],
+            'radial_tension': [],
+            'xb_fraction_free': [],
+            'xb_fraction_loose': [],
+            'xb_fraction_tight': [],
+            'xb_trans_12': [],
+            'xb_trans_23': [],
+            'xb_trans_31': [],
+            'xb_trans_21': [],
+            'xb_trans_32': [],
+            'xb_trans_13': [],
+            'xb_trans_static': [],
+            'actin_permissiveness': [],
+            'thick_displace_mean': [],
+            'thick_displace_max': [],
+            'thick_displace_min': [],
+            'thick_displace_std': [],
+            'thin_displace_mean': [],
+            'thin_displace_max': [],
+            'thin_displace_min': [],
+            'thin_displace_std': [],
+        }
+
+    def append(self):
+        """Digest out the non-vector values we want to record for each
+        timestep and append them to the data_dict. This is called at each
+        timestep to build a dict for inclusion in a pandas dataframe.
+        """
+        ## Lambda helpers
+        ad = lambda n,v: self.data_dict[n].append(v)
+        ## Calculated components
+        radial_force = self.sarc.radialforce()
+        xb_fracs = self.sarc.get_frac_in_states()
+        xb_trans = sum(sum(self.sarc.last_transitions,[]),[])
+        act_perm = np.mean(self.sarc.actin_permissiveness)
+        thick_d = np.hstack([t.displacement_per_crown()
+                             for t in self.sarc.thick])
+        thin_d = np.hstack([t.displacement_per_node()
+                            for t in self.sarc.thin])
+        ## Dictionary work
+        ad('timestep', self.sarc.current_timestep)
+        ad('z_line', self.sarc.z_line)
+        ad('lattice_spacing', self.sarc.lattice_spacing)
+        ad('axial_force', self.sarc.axialforce())
+        ad('radial_force_y', radial_force[0])
+        ad('radial_force_z', radial_force[1])
+        ad('radial_tension', self.sarc.radialtension())
+        ad('xb_fraction_free', xb_fracs[0])
+        ad('xb_fraction_loose', xb_fracs[1])
+        ad('xb_fraction_tight', xb_fracs[2])
+        ad('xb_trans_12', xb_trans.count('12'))
+        ad('xb_trans_23', xb_trans.count('23'))
+        ad('xb_trans_31', xb_trans.count('31'))
+        ad('xb_trans_21', xb_trans.count('21'))
+        ad('xb_trans_32', xb_trans.count('32'))
+        ad('xb_trans_13', xb_trans.count('13'))
+        ad('xb_trans_static', xb_trans.count(None))
+        ad('actin_permissiveness', act_perm)
+        ad('thick_displace_mean', np.mean(thick_d))
+        ad('thick_displace_max', np.max(thick_d))
+        ad('thick_displace_min', np.min(thick_d))
+        ad('thick_displace_std', np.std(thick_d))
+        ad('thin_displace_mean', np.mean(thin_d))
+        ad('thin_displace_max', np.max(thin_d))
+        ad('thin_displace_min', np.min(thin_d))
+        ad('thin_displace_std', np.std(thin_d))
+        
+    def dump_and_clear(self):
+        try:
+            with open(self.working_filename, 'r') as past:
+                old = json.load(past)
+            for key in self.update_keys:
+                old[key].extend(self.data_dict[key])
+                self.data_dict[key] = []
+            with open(self.working_filename, 'w') as datafile:
+                json.dump(self.data_dict, datafile, sort_keys=True)
+        except FileNotFoundError:
+            with open(self.working_filename, 'w') as datafile:
+                json.dump(self.data_dict, datafile, sort_keys=True)
+        
+    def finalize(self):
+        """Write the data dict to the temporary file location"""
+        self.dump_and_clear()
+        return self.working_filename
+
+    def delete(self):
+        """Delete the data file from disk"""
+        try:
+            os.remove(self.working_filename)
+        except FileNotFoundError:
+            print("File not created yet")
