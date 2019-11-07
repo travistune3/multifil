@@ -15,11 +15,17 @@ from . import af
 from . import mf
 from . import ti
 
+# Parameter Standards
+HS_MF_K = 0
+HS_AF_K = 1
+HS_TI_A = 0
+HS_TI_B = 1
+
 class hs:
     """The half-sarcomere and ways to manage it"""
     def __init__(self, lattice_spacing=None, z_line=None, poisson=None,
                 actin_permissiveness=None, timestep_len=1,
-                time_dependence=None, starts=None, titin_params=None):
+                time_dependence=None, starts=None, titin_params=None, filament_params=None):
         """ Create the data structure that is the half-sarcomere model
 
         Parameters:
@@ -138,6 +144,9 @@ class hs:
         # Store these values for posterity
         self.lattice_spacing = lattice_spacing
         self.z_line = z_line
+        # Setup filament parameters
+        if filament_params is None:
+            filament_params = (None, None)
         # Create the thin filaments, unlinked but oriented on creation.
         thin_orientations = ([4,0,2], [3,5,1], [4,0,2], [3,5,1],
                 [3,5,1], [4,0,2], [3,5,1], [4,0,2])
@@ -149,7 +158,7 @@ class hs:
         self._thin_starts = thin_starts
         thin_ids = range(len(thin_orientations))
         new_thin = lambda id: af.ThinFilament(self, id, thin_orientations[id],
-                                              thin_starts[id])
+                                              thin_starts[id], k=filament_params[HS_AF_K])
         self.thin = tuple([new_thin(id) for id in thin_ids])
         # Determine the hiding line
         self.update_hiding_line()
@@ -187,22 +196,22 @@ class hs:
                     self.thin[0].thin_faces[1], self.thin[1].thin_faces[2],
                     self.thin[2].thin_faces[2], self.thin[6].thin_faces[0],
                     self.thin[5].thin_faces[0], self.thin[4].thin_faces[1]),
-                    thick_starts[0]),
+                    thick_starts[0], k=filament_params[HS_MF_K]),
                 mf.ThickFilament(self, 1, (
                     self.thin[2].thin_faces[1], self.thin[3].thin_faces[2],
                     self.thin[0].thin_faces[2], self.thin[4].thin_faces[0],
                     self.thin[7].thin_faces[0], self.thin[6].thin_faces[1]),
-                    thick_starts[1]),
+                    thick_starts[1], k=filament_params[HS_MF_K]),
                 mf.ThickFilament(self, 2, (
                     self.thin[5].thin_faces[1], self.thin[6].thin_faces[2],
                     self.thin[7].thin_faces[2], self.thin[3].thin_faces[0],
                     self.thin[2].thin_faces[0], self.thin[1].thin_faces[1]),
-                    thick_starts[2]),
+                    thick_starts[2], k=filament_params[HS_MF_K]),
                 mf.ThickFilament(self, 3, (
                     self.thin[7].thin_faces[1], self.thin[4].thin_faces[2],
                     self.thin[5].thin_faces[2], self.thin[1].thin_faces[0],
                     self.thin[0].thin_faces[0], self.thin[3].thin_faces[1]),
-                    thick_starts[3])
+                    thick_starts[3], k=filament_params[HS_MF_K])
                 )
         # Now the thin filaments need to be linked to thick filaments, use
         # the face orders from above and the following arrangement:
@@ -300,8 +309,8 @@ class hs:
         a = None
         b = None
         if titin_params is not None:
-            a = titin_params[0]
-            b = titin_params[1]
+            a = titin_params[HS_TI_A]
+            b = titin_params[HS_TI_B]
         ti_thick = lambda i, j: self.thick[i].thick_faces[j]
         ti_thin = lambda i, j: self.thin[i].thin_faces[j]
         self.titin = (

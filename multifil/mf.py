@@ -306,7 +306,7 @@ class ThickFilament:
     It is attached to the m-line at one end and to nothing
     at the other (yet).
     """
-    def __init__(self, parent_lattice, index, thin_faces, start):
+    def __init__(self, parent_lattice, index, thin_faces, start, k=None):
         """Initialize the thick filament.
 
         Parameters:
@@ -444,7 +444,9 @@ class ThickFilament:
         # Thick filament properties to remember
         self.number_of_crowns = n_cr
         self.thin_faces = thin_faces
-        self.k = 2020 # Spring constant of thick filament in pN/nm
+        if k is None:
+            k = 2020 # Spring constant of thick filament in pN/nm
+        self.k = k
         self.b_z = bare_zone
 
     def __str__(self):

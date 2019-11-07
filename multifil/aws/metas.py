@@ -196,7 +196,7 @@ def actin_permissiveness_workloop(freq, phase, stim_duration,
 ## Configure a run via a saved meta file
 def emit(path_local, path_s3, time,  poisson=0.0, ls=None, z_line=None,
          actin_permissiveness=None, comment = None, 
-         write = True, titin_params=None, **kwargs):
+         write = True, titin_params=None, filament_params=None, **kwargs):
     """Produce a structured JSON file that will be consumed to create a run
 
     Import emit into an interactive workspace and populate a directory with
@@ -270,6 +270,7 @@ def emit(path_local, path_s3, time,  poisson=0.0, ls=None, z_line=None,
     rund['z_line'] = z_line
     rund['actin_permissiveness'] = actin_permissiveness
     rund['titin_params'] = titin_params
+    rund['filament_params'] = filament_params
     rund['timestep_length'] = np.diff(time)[0]
     rund['timestep_number'] = len(time)
     ## Include kwargs

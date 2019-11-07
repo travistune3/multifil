@@ -321,7 +321,7 @@ class ThinFilament:
     node is adjacent to the Z-line.
     [Tanner2007]:http://dx.doi.org/10.1371/journal.pcbi.0030115
     """
-    def __init__(self, parent_lattice, index, face_orientations, start=0):
+    def __init__(self, parent_lattice, index, face_orientations, start=0, k=None):
         """Initialize the thin filament
 
         Parameters:
@@ -415,7 +415,9 @@ class ThinFilament:
         # Other thin filament properties to remember
         self.number_of_nodes = len(self.binding_sites)
         self.thick_faces = None # Set after creation of thick filaments
-        self.k = 1743
+        if k is None:
+            k = 1743
+        self.k = k
 
     def to_dict(self):
         """Create a JSON compatible representation of the thin filament

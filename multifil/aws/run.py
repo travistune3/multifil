@@ -104,7 +104,8 @@ class manage:
             actin_permissiveness = actin_permissiveness,
             timestep_len = meta['timestep_length'],
             time_dependence = time_dep_dict,
-            titin_params = meta['titin_params']
+            titin_params = meta['titin_params'],
+            filament_params = meta['filament_params']
             )
         return sarc
 
