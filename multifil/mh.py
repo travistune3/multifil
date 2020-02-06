@@ -357,7 +357,7 @@ class Head:
         ## Transitions rates are checked against a random number
         check = random.rand()
         ## Check for transitions depending on the current state
-        if self.state == "free":
+        if self.state == "free":    # Note that it is not possible to go from being unbound to tightly bound(ATP-hydrolyzed)
             if self._prob(self._bind(bs))*ap > check:
                 self.state = "loose"
                 return '12'
@@ -710,8 +710,11 @@ class Crossbridge(Head):
             trans = super(Crossbridge, self).transition(distance_to_site,
                                                         actin_state)
             # Process changes to the bound state
-            if trans in set(('21', '31')):
+            if trans == '21':
                 self.bound_to.bind_to(None)
+                self.bound_to = None
+            elif trans == '31':
+                self.bound_to.unbind()
                 self.bound_to = None
             else:
                 assert (trans in set(('23', '32', None))) , 'State mismatch'

@@ -6,18 +6,28 @@ hs.py - A half-sarcomere model with multiple thick and thin filaments
 Created by Dave Williams on 2009-12-31.
 """
 
-import sys
-import os
 import multiprocessing as mp
+import sys
 import time
+
 import numpy as np
+
 from . import af
 from . import mf
+from . import ti
+
+# Parameter Standards
+HS_MF_K = 0
+HS_AF_K = 1
+HS_TI_A = 0
+HS_TI_B = 1
+
 
 class hs:
     """The half-sarcomere and ways to manage it"""
+
     def __init__(self, lattice_spacing=None, z_line=None, poisson=None,
-                pCa=None, timestep_len=1, time_dependence=None, starts=None):
+                 pCa=None, timestep_len=1, time_dependence=None, starts=None, **kwargs):
         """ Create the data structure that is the half-sarcomere model
 
         Parameters:
@@ -113,7 +123,11 @@ class hs:
         """
         # Versioning, to be updated when backwards incompatible changes to the
         # data structure are made, not on release of new features
-        self.version = 1.3
+        self.version = 1.4  # Includes support for tropomyosin AND titin
+        # Begin handling kwargs
+        titin_params = None
+        if 'ti_params' in kwargs.keys():
+            titin_params = kwargs['ti_params']
         # Parse initial LS and Z-line
         if time_dependence is not None:
             if 'lattice_spacing' in time_dependence:
@@ -142,20 +156,25 @@ class hs:
         self.z_line = z_line
         self.pCa = pCa
         # Create the thin filaments, unlinked but oriented on creation.
-        thin_orientations = ([4,0,2], [3,5,1], [4,0,2], [3,5,1],
-                [3,5,1], [4,0,2], [3,5,1], [4,0,2])
-        np.random.seed()
+        thin_orientations = ([4, 0, 2], [3, 5, 1], [4, 0, 2], [3, 5, 1],
+                             [3, 5, 1], [4, 0, 2], [3, 5, 1], [4, 0, 2])
+        np.random.seed(None)
         if starts is None:
-            thin_starts = [np.random.randint(25) for i in thin_orientations]
+            thin_starts = []
+            for i in range(len(thin_orientations)):
+                thin_starts.append(np.random.randint(25))
         else:
             thin_starts = starts[0]
         self._thin_starts = thin_starts
         thin_ids = range(len(thin_orientations))
-        new_thin = lambda id: af.ThinFilament(self, id, thin_orientations[id],
-                                              thin_starts[id])
-        self.thin = tuple([new_thin(id) for id in thin_ids])
+        new_thin = lambda thin_id: af.ThinFilament(self, thin_id, thin_orientations[thin_id],
+                                                   thin_starts[thin_id])
+        self.thin = tuple([new_thin(thin_id) for thin_id in thin_ids])
         # Determine the hiding line
+        self.hiding_line = None
         self.update_hiding_line()
+
+        '''Begin connecting things'''
         # Create the thick filaments, remembering they are arranged thus:
         # ----------------------------
         # |   Actin around myosin    |
@@ -181,32 +200,34 @@ class hs:
         # |         a4         |      m2         m2      m1  |
         # ----------------------------------------------------
         if starts is None:
-            thick_starts = [np.random.randint(1, 4) for i in range(4)]
+            thick_starts = []
+            for i in range(4):
+                thick_starts.append(np.random.randint(1, 4))
         else:
             thick_starts = starts[1]
         self._thick_starts = thick_starts
         self.thick = (
-                mf.ThickFilament(self, 0, (
-                    self.thin[0].thin_faces[1], self.thin[1].thin_faces[2],
-                    self.thin[2].thin_faces[2], self.thin[6].thin_faces[0],
-                    self.thin[5].thin_faces[0], self.thin[4].thin_faces[1]),
-                    thick_starts[0]),
-                mf.ThickFilament(self, 1, (
-                    self.thin[2].thin_faces[1], self.thin[3].thin_faces[2],
-                    self.thin[0].thin_faces[2], self.thin[4].thin_faces[0],
-                    self.thin[7].thin_faces[0], self.thin[6].thin_faces[1]),
-                    thick_starts[1]),
-                mf.ThickFilament(self, 2, (
-                    self.thin[5].thin_faces[1], self.thin[6].thin_faces[2],
-                    self.thin[7].thin_faces[2], self.thin[3].thin_faces[0],
-                    self.thin[2].thin_faces[0], self.thin[1].thin_faces[1]),
-                    thick_starts[2]),
-                mf.ThickFilament(self, 3, (
-                    self.thin[7].thin_faces[1], self.thin[4].thin_faces[2],
-                    self.thin[5].thin_faces[2], self.thin[1].thin_faces[0],
-                    self.thin[0].thin_faces[0], self.thin[3].thin_faces[1]),
-                    thick_starts[3])
-                )
+            mf.ThickFilament(self, 0, (
+                self.thin[0].thin_faces[1], self.thin[1].thin_faces[2],
+                self.thin[2].thin_faces[2], self.thin[6].thin_faces[0],
+                self.thin[5].thin_faces[0], self.thin[4].thin_faces[1]),
+                             thick_starts[0]),
+            mf.ThickFilament(self, 1, (
+                self.thin[2].thin_faces[1], self.thin[3].thin_faces[2],
+                self.thin[0].thin_faces[2], self.thin[4].thin_faces[0],
+                self.thin[7].thin_faces[0], self.thin[6].thin_faces[1]),
+                             thick_starts[1]),
+            mf.ThickFilament(self, 2, (
+                self.thin[5].thin_faces[1], self.thin[6].thin_faces[2],
+                self.thin[7].thin_faces[2], self.thin[3].thin_faces[0],
+                self.thin[2].thin_faces[0], self.thin[1].thin_faces[1]),
+                             thick_starts[2]),
+            mf.ThickFilament(self, 3, (
+                self.thin[7].thin_faces[1], self.thin[4].thin_faces[2],
+                self.thin[5].thin_faces[2], self.thin[1].thin_faces[0],
+                self.thin[0].thin_faces[0], self.thin[3].thin_faces[1]),
+                             thick_starts[3])
+        )
         # Now the thin filaments need to be linked to thick filaments, use
         # the face orders from above and the following arrangement:
         # ----------------------------
@@ -223,25 +244,123 @@ class hs:
         # The following may be hard to read, but it has been checked and
         # may be moderately trusted. CDW-20100406
         self.thin[0].set_thick_faces((self.thick[3].thick_faces[4],
-            self.thick[0].thick_faces[0], self.thick[1].thick_faces[2]))
+                                      self.thick[0].thick_faces[0], self.thick[1].thick_faces[2]))
         self.thin[1].set_thick_faces((self.thick[3].thick_faces[3],
-            self.thick[2].thick_faces[5], self.thick[0].thick_faces[1]))
+                                      self.thick[2].thick_faces[5], self.thick[0].thick_faces[1]))
         self.thin[2].set_thick_faces((self.thick[2].thick_faces[4],
-            self.thick[1].thick_faces[0], self.thick[0].thick_faces[2]))
+                                      self.thick[1].thick_faces[0], self.thick[0].thick_faces[2]))
         self.thin[3].set_thick_faces((self.thick[2].thick_faces[3],
-            self.thick[3].thick_faces[5], self.thick[1].thick_faces[1]))
+                                      self.thick[3].thick_faces[5], self.thick[1].thick_faces[1]))
         self.thin[4].set_thick_faces((self.thick[1].thick_faces[3],
-            self.thick[0].thick_faces[5], self.thick[3].thick_faces[1]))
+                                      self.thick[0].thick_faces[5], self.thick[3].thick_faces[1]))
         self.thin[5].set_thick_faces((self.thick[0].thick_faces[4],
-            self.thick[2].thick_faces[0], self.thick[3].thick_faces[2]))
+                                      self.thick[2].thick_faces[0], self.thick[3].thick_faces[2]))
         self.thin[6].set_thick_faces((self.thick[0].thick_faces[3],
-            self.thick[1].thick_faces[5], self.thick[2].thick_faces[1]))
+                                      self.thick[1].thick_faces[5], self.thick[2].thick_faces[1]))
         self.thin[7].set_thick_faces((self.thick[1].thick_faces[4],
-            self.thick[3].thick_faces[0], self.thick[2].thick_faces[2]))
+                                      self.thick[3].thick_faces[0], self.thick[2].thick_faces[2]))
+        # Create the titin filaments and link them from thick
+        # faces to thin faces
+        # |--------------------------------------------------|
+        # |            Actin & titin around myosin           |
+        # |--------------------------------------------------|
+        # |           a1               a3                    |
+        # |                                                  |
+        # |  a0       t1      a2       t4       a0           |
+        # |       t0     t2        t3      t5                |
+        # |           M0               M1                    |
+        # |       t6     t8        t9      t11               |
+        # |  a4       t7      a6       t10      a4           |
+        # |                                                  |
+        # |           a5     t13       a7       t16      a5  |
+        # |               t12    t14        t15    t17       |
+        # |                   M2                M3           |
+        # |               t18    t20        t21    t23   a1  |
+        # |           a1      t19      a3       t22          |
+        # |                                                  |
+        # |                   a2                a0           |
+        # |--------------------------------------------------|
+        # ## CHECK_JDP ## Link Thick filament to titin
+        # ## Checked - AMA 13JUN19 - loop format:
+        '''loop format:
+            linklist = []
+            num = 0
+            anlist = [0,1,2,2,3,0]
+            for half in range(0, 2):
+                mflist = [0,1,2]
+                aflist = [1,2,2]
+
+                for quart in range(0, 2): 
+                    for eighth in range(0, 2):
+                        for triple in range(0, 3):
+                            mn = eighth + half * 2
+                            mf = mflist[triple]
+                            an = anlist[triple + eighth * 3]
+                            af = aflist[triple]
+                            linklist.append((num, mn, mf, an, af))
+                            num += 1
+                    mflist = [5,4,3]
+                    aflist = [1,0,0]
+                    for i in range(0,len(anlist)):
+                        anlist[i] = anlist[i] - half * 8 + 4
+                anlist = [5,6,7,7,4,5]
+
+            for item in linklist:
+                print("ti.Titin(self, " + str(item[0]) + ", ti_thick(" +
+                      str(item[1]) + ", " + str(item[2]) + "), ti_thin(" +
+                      str(item[3]) + ", " + str(item[4]) + "), a=a, b=b),")'''
+        a = None
+        b = None
+        if titin_params is not None:
+            a = titin_params[HS_TI_A]
+            b = titin_params[HS_TI_B]
+        ti_thick = lambda thick_i, j: self.thick[thick_i].thick_faces[j]
+        ti_thin = lambda thin_i, j: self.thin[thin_i].thin_faces[j]
+        self.titin = (
+            ti.Titin(self, 0, ti_thick(0, 0), ti_thin(0, 1), a=a, b=b),
+            ti.Titin(self, 1, ti_thick(0, 1), ti_thin(1, 2), a=a, b=b),
+            ti.Titin(self, 2, ti_thick(0, 2), ti_thin(2, 2), a=a, b=b),
+            ti.Titin(self, 3, ti_thick(1, 0), ti_thin(2, 1), a=a, b=b),
+            ti.Titin(self, 4, ti_thick(1, 1), ti_thin(3, 2), a=a, b=b),
+            ti.Titin(self, 5, ti_thick(1, 2), ti_thin(0, 2), a=a, b=b),
+
+            ti.Titin(self, 6, ti_thick(0, 5), ti_thin(4, 1), a=a, b=b),
+            ti.Titin(self, 7, ti_thick(0, 4), ti_thin(5, 0), a=a, b=b),
+            ti.Titin(self, 8, ti_thick(0, 3), ti_thin(6, 0), a=a, b=b),
+            ti.Titin(self, 9, ti_thick(1, 5), ti_thin(6, 1), a=a, b=b),
+            ti.Titin(self, 10, ti_thick(1, 4), ti_thin(7, 0), a=a, b=b),
+            ti.Titin(self, 11, ti_thick(1, 3), ti_thin(4, 0), a=a, b=b),
+
+            ti.Titin(self, 12, ti_thick(2, 0), ti_thin(5, 1), a=a, b=b),
+            ti.Titin(self, 13, ti_thick(2, 1), ti_thin(6, 2), a=a, b=b),
+            ti.Titin(self, 14, ti_thick(2, 2), ti_thin(7, 2), a=a, b=b),
+            ti.Titin(self, 15, ti_thick(3, 0), ti_thin(7, 1), a=a, b=b),
+            ti.Titin(self, 16, ti_thick(3, 1), ti_thin(4, 2), a=a, b=b),
+            ti.Titin(self, 17, ti_thick(3, 2), ti_thin(5, 2), a=a, b=b),
+
+            ti.Titin(self, 18, ti_thick(2, 5), ti_thin(1, 1), a=a, b=b),
+            ti.Titin(self, 19, ti_thick(2, 4), ti_thin(2, 0), a=a, b=b),
+            ti.Titin(self, 20, ti_thick(2, 3), ti_thin(3, 0), a=a, b=b),
+            ti.Titin(self, 21, ti_thick(3, 5), ti_thin(3, 1), a=a, b=b),
+            ti.Titin(self, 22, ti_thick(3, 4), ti_thin(0, 0), a=a, b=b),
+            ti.Titin(self, 23, ti_thick(3, 3), ti_thin(1, 0), a=a, b=b),
+        )
+        '''Initialize the last few variables'''
         # Set the timestep for all our new cross-bridges
         self.timestep_len = timestep_len
         # Track how long we've been running
         self.current_timestep = 0
+
+        # ## Tropomyosin species concentrations
+        self.c_tn = None
+        self.c_ca = None,
+        self.c_tnca = None
+        # TODO determine if we need to self.update_concentrations()
+
+        # ## variables previously initialized in methods (hiding line included above)
+        self.last_transitions = None
+        self._volume = None
+        self.update_volume()
 
     def to_dict(self):
         """Create a JSON compatible representation of the thick filament
@@ -263,7 +382,7 @@ class hs:
             thick: the structures for the thick filaments
             thin: the structures for the thin filaments
         """
-        sd = self.__dict__.copy() # sarc dict
+        sd = self.__dict__.copy()  # sarc dict
         sd['current_timestep'] = self.current_timestep
         # set act_perm as mean since prop access returns values at every point
         sd['actin_permissiveness'] = np.mean(self.actin_permissiveness)
@@ -280,7 +399,7 @@ class hs:
         if read != current:
             import warnings
             warnings.warn("Versioning mismatch, reading %0.1f into %0.1f."
-                          %(read, current))
+                          % (read, current))
         # Get filaments in right orientations
         self.__init__(
             lattice_spacing=sd['_initial_lattice_spacing'],
@@ -290,7 +409,7 @@ class hs:
             timestep_len=sd['timestep_len'],
             time_dependence=sd['time_dependence'],
             starts=(sd['_thin_starts'], sd['_thick_starts'])
-            )
+        )
         # Local keys
         self.current_timestep = sd['current_timestep']
         self._z_line = sd['_z_line']
@@ -304,7 +423,7 @@ class hs:
         for data, thin in zip(sd['thin'], self.thin):
             thin.from_dict(data)
 
-    def run(self, time_steps=100, callback=None, bar=True):
+    def run(self, time_steps=100, callback=None, bar=True, every=1, print_every=10):
         """Run the model for the specified number of timesteps
 
         Parameters:
@@ -318,32 +437,66 @@ class hs:
                 is passed, it will be called as f(completed_steps,
                 total_steps, sec_left, sec_passed, process_name).
                 (Defaults to True)
+            every: how many timesteps to update after
+            print_every: how many timesteps to print update after
         Returns:
             output: the results of the callback after each timestep
         """
         # Callback defaults to the axial force at the M-line
         if callback is None:
-            callback = lambda sarc: sarc.axialforce()
+            callback = self.tm_report
+
+        # ## logic to handle bar is type(True || False || Function)
+        use_bar = False
+        update_bar = self.print_bar
+        if isinstance(bar, bool):
+            use_bar = bar
+        elif isinstance(bar, type(lambda x: x)):
+            use_bar = True
+            update_bar = bar
         # Create a place to store callback information and note the time
-        output = []
+        output = {}
         tic = time.time()
         # Run through each timestep
         for i in range(time_steps):
-            self.timestep()
-            output.append(callback(self))
-            # Update us on how it went
-            toc = int((time.time()-tic) / (i+1) * (time_steps-i-1))
-            proc_name = mp.current_process().name
-            if bar == True:
-                sys.stdout.write("\n" + proc_name +
-                    " finished timestep %i of %i, %ih%im%is left"\
-                    %(i+1, time_steps, toc/60/60, toc/60%60, toc%60))
-                sys.stdout.flush()
-            elif type(bar) == type(lambda x:x):
-                bar(i, time_steps, toc, time.time()-tic, proc_name)
-        return output
+            try:
+                self.timestep(print_state=i % print_every == 0)
+                output = self._append(callback(), output)
+                # Update us on how it went
+                toc = int((time.time() - tic) / (i + 1) * (time_steps - i - 1))
+                proc_name = mp.current_process().name
 
-    def timestep(self, current=None):
+                if use_bar and i % every == 0:
+                    update_bar(i, time_steps, toc, time.time() - tic, proc_name)
+            except KeyboardInterrupt:
+                return output, 130
+            except Exception as e:
+                import traceback
+                print("/n")
+                print(e)
+                traceback.print_exc()
+                return output, 1
+        return output, 0
+
+    @staticmethod
+    def print_bar(i, time_steps, toc, tic, proc_name):
+        if tic < -1:
+            print('Causality has failed')
+        sys.stdout.write("\n" + proc_name +
+                         " finished timestep %i of %i, %ih%im%is left"
+                         % (i + 1, time_steps, toc / 60 / 60, toc / 60 % 60, toc % 60))
+        sys.stdout.flush()
+
+    @staticmethod
+    def _append(data_dict, dictionary):
+        for key, value in data_dict.items():
+            if key in dictionary.keys():
+                dictionary[key].append(value)
+            else:
+                dictionary.update({key: [value]})
+        return dictionary
+
+    def timestep(self, current=None, print_state=True):
         """Move the model one step forward in time, allowing the
         myosin heads a chance to bind and then balancing forces
         """
@@ -353,8 +506,20 @@ class hs:
         else:
             self.current_timestep += 1
         # Update bound states
+        if print_state:
+            print(" F", end=" ")
         self.last_transitions = [thick.transition() for thick in self.thick]
-        _ = [thin.transition() for thin in self.thin] # TODO: work into storage
+        if print_state:
+            print(" T", end=" ")
+        self.update_concentrations()
+        tm_activation = [thin.transition() for thin in self.thin]  # TODO: work into storage
+        active = 0
+        total = 0
+        for i in range(0, len(tm_activation)):
+            active += tm_activation[i][0]
+            total += tm_activation[i][1]
+        if print_state:
+            print(active / total)
         # Settle forces
         self.settle()
 
@@ -395,6 +560,7 @@ class hs:
         """Set a new z-line, updating the lattice spacing at the same time"""
         self._z_line = new_z_line
         self.update_ls_from_poisson_ratio()
+        self.update_volume()
 
     @property
     def lattice_spacing(self):
@@ -405,6 +571,101 @@ class hs:
     def lattice_spacing(self, new_lattice_spacing):
         """Assign a new lattice spacing"""
         self._lattice_spacing = new_lattice_spacing
+
+    @property
+    def _tn_count(self):
+        return self._tn_total - self._tnca_count
+
+    @property
+    def _tnca_count(self):
+        bound = 0
+        for thin in self.thin:
+            for tm in thin.tm:
+                for tm_site in tm.sites:
+                    if tm_site.state != 0:
+                        bound += 1
+        return bound
+
+    @property
+    def _tn_total(self):
+        total_tn = 0
+        for thin in self.thin:
+            for tm in thin.tm:
+                total_tn += len(tm.sites)
+        return total_tn
+
+    def update_concentrations(self):
+        self.c_tn = self._concentration(self._tn_count)
+        self.c_ca = 10.0 ** (-self.pCa)
+        self.c_tnca = self._concentration(self._tnca_count)
+
+    @property
+    def concentrations(self):
+        return {"free_tm": self.c_tn,
+                "free_ca": self.c_ca,
+                "bound_tm": self.c_tnca}
+
+    def tm_report(self):
+        report = {}
+        # calculate average rates across all binding sites and average cooperativity state
+        rates = [0, 0, 0, 0, 0, 0]
+        count = 0
+        coop = 0
+        for thin in self.thin:
+            for tm in thin.tm:
+                for tm_site in tm.sites:
+                    if tm_site.subject_to_cooperativity:
+                        coop += 1
+                    new_rates = tm_site.get_rates
+                    for i in range(len(rates)):
+                        rates[i] += new_rates[i]
+                    count += 1
+        for i in range(len(rates)):
+            rates[i] /= count
+
+        rate_keys = ["r_12", "r_21", "r_23", "r_32", "r_31", "r_13"]
+        for i in range(len(rates)):
+            report.update({rate_keys[i]: rates[i]})
+
+        xb_fracs = self.get_frac_in_states()
+
+        report.update({"coop": coop / count,
+                       "axial_force": self.axial_force(),
+                       "ca": self.c_ca,
+                       "xb_fraction_free": xb_fracs[0],
+                       "xb_fraction_loose": xb_fracs[1],
+                       "xb_fraction_tight": xb_fracs[2]})
+        report.update(self.concentrations)
+        return report
+
+    @property
+    def volume(self):
+        """return the current fluid volume of the half-sarcomere AMA-11JAN2020"""
+        return self._volume
+
+    # @volume.setter
+    def update_volume(self):
+        """re-calculate the fluid volume of the half sarcomere - ASSUMING CONSTANT LATTICE SPACING
+        returns volume in L(AMA-3FEB2020)
+        (nm3 AMA-11JAN2020"""
+        ls = self._lattice_spacing
+        length = self._z_line
+
+        # calculate area of 4 hexagons, with edge length 9/2 + 16/2 + ls
+        edge = 9 / 2 + 16 / 2 + ls
+        area = 4 * 3 / 2 * np.sqrt(3) * edge * edge
+
+        thin_volume = np.pi * 22659.75  # radius 4.5 * radius 4.5 * length 1119
+        thick_volume = np.pi * 58624  # radius 8 * radius 8 * length 916
+        filament_volume = 10 * thin_volume + 4 * thick_volume
+        whole_volume = area * length
+        fluid_volume = whole_volume - filament_volume
+        nm3_p_L = 1e-24
+        fluid_volume *= nm3_p_L
+        self._volume = fluid_volume
+
+    def _concentration(self, count):
+        return count / self.volume
 
     @staticmethod
     def ls_to_d10(face_dist):
@@ -435,7 +696,7 @@ class hs:
             d10: d10 spacing in nm
         """
         filcenter_dist = face_dist + 0.5 * 9 + 0.5 * 16
-        d10 = 1.5* filcenter_dist
+        d10 = 1.5 * filcenter_dist
         return d10
 
     @staticmethod
@@ -450,19 +711,19 @@ class hs:
         Returns:
             face_dist: face to face lattice spacing in nm
         """
-        filcenter_dist = d10 * 2/3
+        filcenter_dist = d10 * 2 / 3
         face_dist = filcenter_dist - 0.5 * 9 - 0.5 * 16
         return face_dist
 
-    def axialforce(self):
+    def axial_force(self):
         """Sum of each thick filament's axial force on the M-line """
         return sum([thick.effective_axial_force() for thick in self.thick])
 
-    def radialtension(self):
+    def radial_tension(self):
         """The sum of the thick filaments' radial tensions"""
         return sum([t.radialtension() for t in self.thick])
 
-    def radialforce(self):
+    def radial_force(self):
         """The sum of the thick filaments' radial forces, as a (y,z) vector"""
         return np.sum([t.radial_force_of_filament() for t in self.thick], 0)
 
@@ -479,9 +740,9 @@ class hs:
         result in a deformation that produces more axial force than the
         convergence value, 0.12pN.
         """
-        converge_limit=0.12 # see doc string
+        converge_limit = 0.12  # see doc string
         converge = self._single_settle()
-        while converge>converge_limit:
+        while converge > converge_limit:
             converge = self._single_settle()
 
     def _get_residual(self):
@@ -496,7 +757,7 @@ class hs:
         nested = [t.get_states() for t in self.thick]
         xb_states = [xb for fil in nested for face in fil for xb in face]
         num_in_state = [xb_states.count(state) for state in range(3)]
-        frac_in_state = [n/float(len(xb_states)) for n in num_in_state]
+        frac_in_state = [n / float(len(xb_states)) for n in num_in_state]
         return frac_in_state
 
     def update_ls_from_poisson_ratio(self):
@@ -525,16 +786,16 @@ class hs:
         Values: See ls_to_d10
 
         Parameters:
-            None
+            self: half-sarcomere, automatically passed
         Returns:
             None
         """
-        beta =  0.5 * (9 + 16)
+        beta = 0.5 * (9 + 16)
         ls_0 = self._initial_lattice_spacing
         z_0 = self._initial_z_line
         nu = self.poisson_ratio
         dz = self.z_line - z_0
-        ls = (ls_0 + beta) * (z_0/(z_0 + dz))**nu - beta
+        ls = (ls_0 + beta) * (z_0 / (z_0 + dz)) ** nu - beta
         self.lattice_spacing = ls
         return
 
@@ -567,315 +828,7 @@ class hs:
         elif address[0] in ['crown', 'thick_face', 'xb']:
             return self.thick[address[1]].resolve_address(address)
         import warnings
-        warnings.warn("Unresolvable address: %s"%str(address))
-
-    def display_axial_force_end(self):
-        """ Show an end view with axial forces of face pairs
-
-        Parameters:
-            None
-        Returns:
-            None
-        """
-        # Note: The display requires the form:
-        #  [[M0_A0, M0_A1, ..., M0_A5], ..., [M3_A0, ..., M3_A5]]
-        forces = [[face.axialforce() for face in thick.thick_faces]
-                    for thick in self.thick]
-        # Display the forces
-        self.display_ends(forces, "Axial force of face pairs", True)
-
-    def display_state_end(self, states=[1,2]):
-        """ Show an end view of the current state of the cross-bridges
-
-        Parameters:
-            states: List of states to count in the display, defaults
-                    to [1,2] showing the number of bound cross-bridges
-        Returns:
-            None
-        """
-        # Compensate if the passed states aren't iterable
-        try:
-            iter(states)
-        except TypeError:
-            states = [states]
-        # Retrieve and process cross-bridge states
-        # Note: The display requires the form:
-        #  [[M0_A0, M0_A1, ..., M0_A5], ..., [M3_A0, ..., M3_A5]]
-        state_count = []
-        for thick in self.thick:
-            state_count.append([]) # Append list for this thick filament
-            for face in thick.thick_faces:
-                crossbridges = face.get_xb()
-                # Retrieve states
-                xb_states = [xb.numeric_state for xb in crossbridges]
-                # Count states that match our passed states of interest
-                count = sum([state in states for state in xb_states])
-                state_count[-1].append(count)
-        # Display the cross-bridge states
-        self.display_ends(state_count, ("Cross-bridge count in state(s) "
-                                        + str(states)), False)
-
-    def display_state_side(self, states=[1,2]):
-        """ Show a side view of the current state of the cross-bridges
-
-        Parameters:
-            states: List of states to count in the display, defaults
-                    to [1,2] showing the number of bound cross-bridges
-        Returns:
-            None
-        """
-        # Compensate if the passed states aren't iterable
-        try:
-            iter(states)
-        except TypeError:
-            states = [states]
-        # Retrieve and process cross-bridge states
-        # Note: The display requires the form:
-        # [[A0_0,... A0_N], [M0A0_0,... M0A0_N], ...
-        #  [M0A1_0,... M0A1_N], [A1_0,... A1_N]]
-        azo = lambda x: 0 if (x is None) else 1 # Actin limited to zero, one
-        oddeven = 0
-        vals = []
-        for thick in self.thick:
-            vals.append([])
-            for face in thick.thick_faces:
-                m_s = [xb.numeric_state for xb in face.get_xb()]
-                m_s = [m in states for m in m_s]
-                while len(m_s) < 40:
-                    m_s.append(-1)
-                a_s = [azo(bs.bound_to) for bs in face.thin_face.binding_sites]
-                if oddeven == 0:
-                    vals[-1].append([])
-                    vals[-1][-1].append(a_s)
-                    vals[-1][-1].append(m_s)
-                    oddeven = 1
-                elif oddeven == 1:
-                    vals[-1][-1].append(m_s)
-                    vals[-1][-1].append(a_s)
-                    oddeven = 0
-        # Display the cross-bridge states
-        title = ("Cross-bridges in state(s) " + str(states))
-        for fil in vals:
-            for pair in fil:
-                self.display_side(pair, title=title)
-
-    def display_ends(self, graph_values, title=None, display_as_float=None):
-        """ Show the state of some interaction between the filaments
-
-        Parameters:
-            graph_values: Array of values to display in the format:
-                [[M0_A0, M0_A1, ..., M0_A5], ..., [M3_A0, ..., M3_A5]]
-            title: Name of what is being shown (optional)
-            display_as_float: Display values as floats? Tries to determine
-                which type of value was passed, but can be manually set to
-                True or False (optional)
-        Returns:
-            None
-
-        The display is of the format:
-         +-----------------------------------------------------+
-         |           [AA]              [AA]                    |
-         |                                                     |
-         |  [AA]     0200     [AA]     0300     [AA]           |
-         |                                                     |
-         |      0200      0010    0100      0050               |
-         |           (MM)              (MM)                    |
-         |      0100      0010    0100      0010               |
-         |                                                     |
-         |  [AA]     0100     [AA]     0100     [AA]           |
-         |                                                     |
-         |           [AA]     0400     [AA]     0100     [AA]  |
-         |                                                     |
-         |               0200      0020    0200      0020      |
-         |                    (MM)              (MM)           |
-         |               0200      0010    0300      0020      |
-         |                                                     |
-         |           [AA]     0600     [AA]     0300     [AA]  |
-         |                                                     |
-         |                    [AA]              [AA]           |
-         +-----------------------------------------------------+
-        """
-        # Functions for converting numbers to easily displayed formats
-        left_float = lambda x: "%-4.1f" % x
-        right_float = lambda x: "%4.1f" % x
-        left_int = lambda x: "%-4i" % x
-        right_int = lambda x: "%4i" % x
-        if display_as_float == True:
-            l = left_float
-            r = right_float
-        elif type(graph_values[0][0]) == int or display_as_float == False:
-            l = left_int
-            r = right_int
-        else:
-            l = left_float
-            r = right_float
-        # Print the title, or not
-        if title is not None:
-            print("  +" + title.center(53,"-") + "+")
-        else:
-            print("  +" + 53*"-" + "+")
-        # Print the rest
-        v = graph_values # Shorthand
-        print(
-        "  |           [AA]              [AA]                    |\n" +
-        "  |                                                     |\n" +
-        "  |  [AA]     %s     [AA]     %s     [AA]           |\n"
-         % (l(v[0][1]), l(v[1][1])) +
-        "  |                                                     |\n" +
-        "  |      %s      %s    %s      %s               |\n"
-         % (l(v[0][0]), r(v[0][2]), l(v[1][0]), r(v[1][2])) +
-        "  |           (MM)              (MM)                    |\n" +
-        "  |      %s      %s    %s      %s               |\n"
-         % (l(v[0][5]), r(v[0][3]), l(v[1][5]), r(v[1][3])) +
-        "  |                                                     |\n" +
-        "  |  [AA]     %s     [AA]     %s     [AA]           |\n"
-         % (l(v[0][4]), l(v[1][4])) +
-        "  |                                                     |\n" +
-        "  |           [AA]     %s     [AA]     %s     [AA]  |\n"
-         % (l(v[2][1]), l(v[3][1])) +
-        "  |                                                     |\n" +
-        "  |               %s      %s    %s      %s      |\n"
-         % (l(v[2][0]), r(v[2][2]), l(v[3][0]), r(v[3][2])) +
-        "  |                    (MM)              (MM)           |\n" +
-        "  |               %s      %s    %s      %s      |\n"
-         % (l(v[2][5]), r(v[2][3]), l(v[3][5]), r(v[3][3])) +
-        "  |                                                     |\n" +
-        "  |           [AA]     %s     [AA]     %s     [AA]  |\n"
-         % (l(v[2][4]), l(v[3][4])) +
-        "  |                                                     |\n" +
-        "  |                    [AA]              [AA]           |\n" +
-        "  +-----------------------------------------------------+")
-        return
-
-    def display_side(self, graph_values, ends=(0, 0, 0), title=None,
-                     labels=("A ", "M ", "A "), display_zeros=True):
-        """Show the states of the filaments, as seen from their sides
-
-        The input is essentially a list of dictionaries, each of which
-        contains the values necessary to produce one of the panels this
-        outputs. Each of those dictionaries contains the title (if any)
-        for that panel, the side titles, the end values, and the numeric
-        interaction values. Currently, the interaction values are limited
-        to integers.
-
-        Parameters:
-            graph_values: Values to display in the format
-                [[A0_0, A0_1, ..., A0_N],
-                 [M0A0_0, M0A0_1, ..., M0A0_N],
-                 [M0A1_0, M0A1_1, ..., M0A1_N],
-                 [A1_0, A1_1, ..., A1_N]]
-            ends: None or values for ends in the format
-                [A0_end, M0_end, A1_end]
-            title: None or a title string
-            labels: None or filament labels in the format
-                ['A0', 'M0', 'A1']
-            display_zeros: Defaults to True
-        Returns:
-            None
-
-        The printed output is of the format:
-         +-----------------------------------------------------------+----+
-         | Z-disk                                                    |    |
-         | ||----*--*--*--*--*--*--*--*--*--*--*--*--*--*--*         | A0 |
-         | 000   00 00 00 00 00 00 00 00 00 00 00 00 00 00 00        |    |
-         |                                                           |    |
-         |      00 00 00 00 00 00 00 00 00 00 00 00 00 00 00    000  |    |
-         |      #==#==#==#==#==#==#==#==#==#==#==#==#==#==#======||  | M0 |
-         |      00 00 00 00 00 00 00 00 00 00 00 00 00 00 00  M-line |    |
-         |                                                           |    |
-         | 000   00 00 00 00 00 00 00 00 00 00 00 00 00 00 00        |    |
-         | ||----*--*--*--*--*--*--*--*--*--*--*--*--*--*--*         | A1 |
-         | Z-disk                                                    |    |
-         +-----------------------------------------------------------+----+
-         |                                                           |    |
-         | ||---*--*--*--*--*--*--*--*--*--*--*--*--*--*--*          | A2 |
-         |                                                           |    |
-         |                                                           |    |
-         |         #==#==#==#==#==#==#==#==#==#==#==#==#==#==#===||  | M1 |
-         |                                                           |    |
-         |                                                           |    |
-         | ||---*--*--*--*--*--*--*--*--*--*--*--*--*--*--*          | A3 |
-         |                                                           |    |
-         +-----------------------------------------------------------+----+
-        ... and so on.
-        """
-        # Functions for converting numbers to easily displayed formats
-        filter_zeros = lambda x: x if (display_zeros or (x != 0)) else None
-        l = lambda x: "%-2i" % filter_zeros(int(x))
-        bl = lambda x: "%-3i" % filter_zeros(int(x))
-        r = lambda x: "%2i" % filter_zeros(int(x))
-        br = lambda x: "%3i" % filter_zeros(int(x))
-        # Print the title, if any
-        if title is not None:
-            print("  +" + title.center(134,"-") + "+----+")
-        else:
-            print("  +" + 134*"-" + "+----+")
-        # Print the rest
-        vals = [[bl(ends[0])] + list(map(l, graph_values[0])),
-                list(map(l, graph_values[1])) + [br(ends[1])],
-                list(map(l, graph_values[2])),
-                [bl(ends[2])] + list(map(l, graph_values[3]))] # Shorthand
-        print(
-        "  | Z-disk                                                                                                                               |    |\n" +
-        "  | ||----*--*--*--*--*--*--*--*--*--*--*--*--*--*--*--*--*--*--*--*--*--*--*--*--*--*--*--*--*--*                                       | %s |\n"
-            % labels[0] +
-        "  | %s   %s %s %s %s %s %s %s %s %s %s %s %s %s %s %s %s %s %s %s %s %s %s %s %s %s %s %s %s %s %s                                      |    |\n"
-            % tuple(vals[0]) +
-        "  |                                                                                                                                      |    |\n" +
-        "  |      %s %s %s %s %s %s %s %s %s %s %s %s %s %s %s %s %s %s %s %s %s %s %s %s %s %s %s %s %s %s %s %s %s %s %s %s %s %s %s %s    %s  |    |\n"
-            % tuple(vals[1]) +
-        "  |      #==#==#==#==#==#==#==#==#==#==#==#==#==#==#==#==#==#==#==#==#==#==#==#==#==#==#==#==#==#==#==#==#==#==#==#==#==#==#==#======||  | %s |\n"
-            % labels[1] +
-        "  |      %s %s %s %s %s %s %s %s %s %s %s %s %s %s %s %s %s %s %s %s %s %s %s %s %s %s %s %s %s %s %s %s %s %s %s %s %s %s %s %s  M-line |    |\n"
-            % tuple(vals[2]) +
-        "  |                                                                                                                                      |    |\n" +
-        "  | %s   %s %s %s %s %s %s %s %s %s %s %s %s %s %s %s %s %s %s %s %s %s %s %s %s %s %s %s %s %s %s                                      |    |\n"
-            % tuple(vals[3]) +
-        "  | ||----*--*--*--*--*--*--*--*--*--*--*--*--*--*--*--*--*--*--*--*--*--*--*--*--*--*--*--*--*--*                                       | %s |\n"
-            % labels[2] +
-        "  | Z-disk                                                                                                                               |    |\n" +
-        "  +--------------------------------------------------------------------------------------------------------------------------------------+----+\n"
-        )
-        #+-----------------------------------------------------------+----+
-        #| Z-disk                                                    |    |
-        #| ||----*--*--*--*--*--*--*--*--*--*--*--*--*--*--*--...    | A0 |
-        #| 000   00 00 00 00 00 00 00 00 00 00 00 00 00 00 00        |    |
-        #|                                                           |    |
-        #|      00 00 00 00 00 00 00 00 00 00 00 00 00 00 00         |    |
-        #|      #==#==#==#==#==#==#==#==#==#==#==#==#==#==#==...     | M0 |
-        #|      00 00 00 00 00 00 00 00 00 00 00 00 00 00 00         |    |
-        #|                                                           |    |
-        #| 000   00 00 00 00 00 00 00 00 00 00 00 00 00 00 00        |    |
-        #| ||----*--*--*--*--*--*--*--*--*--*--*--*--*--*--*--...    | A1 |
-        #| Z-disk                                                    |    |
-        #+-----------------------------------------------------------+----+
-        #|                                                           |    |
-        #|  ...--*--*--*--*--*--*--*--*--*--*--*--*--*--*--*         | A0 |
-        #|       00 00 00 00 00 00 00 00 00 00 00 00 00 00 00        |    |
-        #|                                                           |    |
-        #|      00 00 00 00 00 00 00 00 00 00 00 00 00 00 00         |    |
-        #|  ...=#==#==#==#==#==#==#==#==#==#==#==#==#==#==#==...     | M0 |
-        #|      00 00 00 00 00 00 00 00 00 00 00 00 00 00 00         |    |
-        #|                                                           |    |
-        #|       00 00 00 00 00 00 00 00 00 00 00 00 00 00 00        |    |
-        #|  ...--*--*--*--*--*--*--*--*--*--*--*--*--*--*--*         | A1 |
-        #|                                                           |    |
-        #+-----------------------------------------------------------+----+
-        #|                                                           |    |
-        #|                                                           | A0 |
-        #|                                                           |    |
-        #|                                                           |    |
-        #|      00 00 00 00 00 00 00 00 00 00  000                   |    |
-        #|  ...=#==#==#==#==#==#==#==#==#==#======||                 | M0 |
-        #|      00 00 00 00 00 00 00 00 00 00  M-line                |    |
-        #|                                                           |    |
-        #|                                                           |    |
-        #|                                                           | A1 |
-        #|                                                           |    |
-        #+-----------------------------------------------------------+----+
-        #
-        #
-        return
+        warnings.warn("Unresolvable address: %s" % str(address))
 
 
 sarc = hs()

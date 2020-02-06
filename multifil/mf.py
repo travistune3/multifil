@@ -216,6 +216,10 @@ class ThickFace:
         thickfaced['xb_by_crown'] = [xb.address if xb is not None else None\
                                      for xb in thickfaced['xb_by_crown']]
         return thickfaced
+    
+    def link_titin(self, titin_fil):
+        """Add a titin filament to this face"""
+        self.titin_fil = titin_fil
 
     def from_dict(self, tfd):
         """ Load values from a thick face dict. Values read in correspond

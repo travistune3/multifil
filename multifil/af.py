@@ -20,6 +20,7 @@ class BindingSite:
         Parameters:
             parent_thin_fil: the calling thin filament instance
             index: the axial index on the parent thin filament
+        Properties:
             address: largest to most local, indices for finding this
             orientation: select between six orientations (0-5)
         """
@@ -32,20 +33,18 @@ class BindingSite:
         orientation_vectors = ((0.866, -0.5), (0, -1), (-0.866, -0.5),
                 (-0.866, 0.5), (0, 1), (0.866, 0.5))
         self.orientation = orientation_vectors[orientation]
-        # Start off unlinked to a tromomyosin site
+        # Start off unlinked to a tropomyosin site
         self.tm_site = None
         # Create attributes to store things not yet present
-        self.bound_to = None # None if unbound, Crossbridge object otherwise
+        self.bound_to = None    # None if unbound, Crossbridge object otherwise
 
     def __str__(self):
         """Return the current situation of the binding site"""
-        ident = ['Binding Site #' + str(self.index) + ' Info']
-        ident.append(14 * '=')
-        ident.append('State: ' + str(self.state))
+        result = ['Binding Site #' + str(self.index) + ' Info', 14 * '=', 'State: ' + str(self.state)]
         if self.state != 0:
-            ident.append('Forces: ' + str(self.axialforce())
+            result.append('Forces: ' + str(self.axialforce())
                          + '/' + str(self.radialforce()))
-        return '\n'.join(ident)
+        return '\n'.join(result)
 
     def to_dict(self):
         """Create a JSON compatible representation of the binding site
@@ -73,7 +72,7 @@ class BindingSite:
         """
         # Check for index mismatch
         read, current = tuple(bsd['address']), self.address
-        assert read==current, "index mismatch at %s/%s"%(read, current)
+        assert read == current, "index mismatch at %s/%s" % (read, current)
         # Local keys
         self.orientation = bsd['orientation']
         if bsd['bound_to'] is not None:
@@ -95,7 +94,7 @@ class BindingSite:
         if self.bound_to is None:
             return 0.0
         # Axial force on actin is equal but opposite
-        return -self.bound_to.axialforce(tip_axial_loc = axial_location)
+        return -self.bound_to.axialforce(tip_axial_loc=axial_location)
 
     def radialforce(self):
         """Radial force vector of the bound cross-bridge, if any
@@ -105,18 +104,24 @@ class BindingSite:
         """
         if self.bound_to is None:
             return np.array([0.0, 0.0])
-        force_mag = -self.bound_to.radialforce() # Equal but opposite
+        force_mag = -self.bound_to.radialforce()    # Equal but opposite
         return np.multiply(force_mag, self.orientation)
 
     def bind_to(self, crossbridge):
         """Link this binding site to a cross-bridge object"""
+        # print("+", end="")
         self.bound_to = crossbridge
 
     def unbind(self):
         """Kill off any link to a crossbridge"""
-        assert(self.bound_to is not None) # Else why try to unbind?
+        # print("x", end="")
+        assert(self.bound_to is not None)   # Else why try to unbind?
+        # if False: TODO figure out what condition I had written here...
+        #    self.tm_site.update_nearby()
+        if True:    # else:
+            self.bind_to(None)
         self.bound_to = None
-
+        
     @property
     def tension(self):
         """How much load the thin filament bears at this binding site"""
@@ -154,6 +159,7 @@ class ThinFace:
         ||     m1     ||      Y-->
         ================
     """
+
     def __init__(self, parent_thin_fil, orientation, index, binding_sites):
         """Create the thin filament face
 
@@ -161,6 +167,7 @@ class ThinFace:
             parent_thin_fil: the thin filament on which this face sits
             orientation: which myosin face is opposite this face (0-5)
             index: location on the thin filament this face occupies (0-2)
+        Properties:
             address: largest to most local, indices for finding this
             binding_sites: links to the actin binding sites on this face
         """
@@ -194,7 +201,7 @@ class ThinFace:
         """
         # Check for index mismatch
         read, current = tuple(tfd['address']), self.address
-        assert read==current, "index mismatch at %s/%s"%(read, current)
+        assert read == current, "index mismatch at %s/%s"%(read, current)
         # Local keys
         self.orientation = tfd['orientation']
         self.thick_face = self.parent_thin.parent_lattice.resolve_address(
@@ -202,6 +209,10 @@ class ThinFace:
         # Sub-structure keys
         self.binding_sites = [self.parent_thin.resolve_address(bsa) \
                               for bsa in tfd['binding_sites']]
+        
+    def link_titin(self, titin_fil):
+        """Add a titin filament to this face"""
+        self.titin_fil = titin_fil
 
     def nearest(self, axial_location):
         """Where is the nearest binding site?
@@ -231,7 +242,7 @@ class ThinFace:
             dists = np.abs((face_locs[prev_index] - axial_location,
                             face_locs[next_index] - axial_location))
         else:
-            return self.binding_sites[prev_index] # If at end, return end
+            return self.binding_sites[prev_index]   # If at end, return end
         # If prior site was closer, give it, else give next
         if dists[0] < dists[1]:
             return self.binding_sites[prev_index]
@@ -572,7 +583,22 @@ class ThinFilament:
 
     def transition(self):
         """Give self, (well, TMs really) a chance to transition states"""
-        return [tm.transition() for tm in self.tm]
+        bound = 0
+        total = 0
+        for tropomyosin in self.tm:
+            for tm_site in tropomyosin.sites:
+                if tm_site.state != 0:
+                    bound += 1
+                total += 1
+        volume = self.parent_lattice.volume
+        concentrations = {'free_tm':(total-bound) / volume, 'bound_tm': bound/volume}
+        result = [tm.transition() for tm in self.tm]
+        active = 0
+        total = 0
+        for i in range(0, len(result)):
+            active += result[i][0]
+            total += result[i][1]
+        return active, total
 
     def settle(self, factor):
         """Reduce the total axial force on the system by moving the sites"""
