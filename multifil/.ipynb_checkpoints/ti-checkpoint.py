@@ -45,7 +45,7 @@ class Titin:
         self.thin_face.link_titin(self)
         ## And now we declare titin properties that will be used to
         ## calculate forces
-        self.rest = 120 #nm, no citation :(
+        self.rest = 120 #nm, no citation
         # Create the constants that determine force NOTE IMPROVE DOC
         # NOTE: IMPROVE DEFAULT ARGUMENT LOGIC - AMA19JUN19
         if a is None:

@@ -15,7 +15,7 @@ from . import af
 from . import mf
 from . import ti
 
-# Parameter Standards
+# Spring constant indexing standards
 HS_MF_K = 0
 HS_AF_K = 1
 HS_TI_A = 0
@@ -120,7 +120,7 @@ class hs:
         """
         # Versioning, to be updated when backwards incompatible changes to the
         # data structure are made, not on release of new features
-        self.version = 1.2
+        self.version = 1.3
         # Parse initial LS and Z-line
         if time_dependence is not None:
             if 'lattice_spacing' in time_dependence:
