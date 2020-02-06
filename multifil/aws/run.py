@@ -260,7 +260,7 @@ class data_file:
         ## Lambda helpers
         ad = lambda n,v: self.data_dict[n].append(v)
         ## Calculated components
-        radial_force = self.sarc.radialforce()
+        radial_force = self.sarc.radial_force()
         xb_fracs = self.sarc.get_frac_in_states()
         xb_trans = sum(sum(self.sarc.last_transitions,[]),[])
         act_perm = np.mean(self.sarc.actin_permissiveness)
@@ -272,10 +272,10 @@ class data_file:
         ad('timestep', self.sarc.current_timestep)
         ad('z_line', self.sarc.z_line)
         ad('lattice_spacing', self.sarc.lattice_spacing)
-        ad('axial_force', self.sarc.axialforce())
+        ad('axial_force', self.sarc.axial_force())
         ad('radial_force_y', radial_force[0])
         ad('radial_force_z', radial_force[1])
-        ad('radial_tension', self.sarc.radialtension())
+        ad('radial_tension', self.sarc.radial_tension())
         ad('xb_fraction_free', xb_fracs[0])
         ad('xb_fraction_loose', xb_fracs[1])
         ad('xb_fraction_tight', xb_fracs[2])

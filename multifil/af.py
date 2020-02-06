@@ -94,7 +94,7 @@ class BindingSite:
         if self.bound_to is None:
             return 0.0
         # Axial force on actin is equal but opposite
-        return -self.bound_to.axialforce(tip_axial_loc=axial_location)
+        return -self.bound_to.axial_force(tip_axial_loc=axial_location)
 
     def radialforce(self):
         """Radial force vector of the bound cross-bridge, if any
@@ -104,7 +104,7 @@ class BindingSite:
         """
         if self.bound_to is None:
             return np.array([0.0, 0.0])
-        force_mag = -self.bound_to.radialforce()    # Equal but opposite
+        force_mag = -self.bound_to.radial_force()    # Equal but opposite
         return np.multiply(force_mag, self.orientation)
 
     def bind_to(self, crossbridge):
@@ -177,6 +177,7 @@ class ThinFace:
         self.orientation = orientation
         self.binding_sites = binding_sites
         self.thick_face = None  # ThickFace instance this face interacts with
+        self.titin_fil = None
 
     def to_dict(self):
         """Create a JSON compatible representation of the thin face
@@ -201,14 +202,13 @@ class ThinFace:
         """
         # Check for index mismatch
         read, current = tuple(tfd['address']), self.address
-        assert read == current, "index mismatch at %s/%s"%(read, current)
+        assert read == current, "index mismatch at %s/%s" % (read, current)
         # Local keys
         self.orientation = tfd['orientation']
         self.thick_face = self.parent_thin.parent_lattice.resolve_address(
             tfd['thick_face'])
         # Sub-structure keys
-        self.binding_sites = [self.parent_thin.resolve_address(bsa) \
-                              for bsa in tfd['binding_sites']]
+        self.binding_sites = [self.parent_thin.resolve_address(bsa) for bsa in tfd['binding_sites']]
         
     def link_titin(self, titin_fil):
         """Add a titin filament to this face"""
@@ -289,7 +289,7 @@ class ThinFace:
         if self.thick_face is None:
             raise AttributeError("Thick filament not assigned yet.")
         # Now find the forces on each cross-bridge
-        radial_forces = [site.radialforce() for site in self.binding_sites]
+        radial_forces = [site.radial_force() for site in self.binding_sites]
         return np.sum(radial_forces, 1)
 
     def set_thick_face(self, myosin_face):
@@ -388,11 +388,11 @@ class ThinFilament:
         self.address = ('thin_fil', self.index)
         # TODO The creation of the monomer positions and angles should be refactored into a static function of similar.
         # Figure out axial positions, see Howard pg 125
-        mono_per_poly = 26 # actin monomers in an actin polymer unit
-        poly_per_fil = 15 # actin polymers in a thin filament
-        polymer_base_length = 72.0 # nm per polymer unit length
-        polymer_base_turns = 12.0 # revolutions per polymer
-        rev = 2*np.pi # one revolution
+        mono_per_poly = 26  # actin monomers in an actin polymer unit
+        poly_per_fil = 15   # actin polymers in a thin filament
+        polymer_base_length = 72.0  # nm per polymer unit length
+        polymer_base_turns = 12.0   # revolutions per polymer
+        rev = 2*np.pi   # one revolution
         pitch = polymer_base_turns * rev / mono_per_poly
         rise = polymer_base_length / mono_per_poly
         # Monomer positions start near the m-line
@@ -689,7 +689,6 @@ class ThinFilament:
         subject_to_forces = self._axial_thin_filament_forces()[index:]
         tension = np.sum(subject_to_forces)
         return tension
-
 
     def update_axial_locations(self, flat_axial_locs):
         """Update the axial locations to the passed ones

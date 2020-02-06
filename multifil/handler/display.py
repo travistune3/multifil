@@ -8,7 +8,7 @@ def display_axial_force_end(half_sarcomere):
     """
     # Note: The display requires the form:
     #  [[M0_A0, M0_A1, ..., M0_A5], ..., [M3_A0, ..., M3_A5]]
-    forces = [[face.axialforce() for face in thick.thick_faces]
+    forces = [[face.axial_force() for face in thick.thick_faces]
               for thick in half_sarcomere.thick]
     # Display the forces
     display_ends(forces, "Axial force of face pairs", True)

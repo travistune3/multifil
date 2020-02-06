@@ -281,34 +281,36 @@ class hs:
         # |                   a2                a0           |
         # |--------------------------------------------------|
         # ## CHECK_JDP ## Link Thick filament to titin
-        # ## Checked - AMA 13JUN19 - loop format:
-        '''loop format:
-            linklist = []
-            num = 0
-            anlist = [0,1,2,2,3,0]
-            for half in range(0, 2):
-                mflist = [0,1,2]
-                aflist = [1,2,2]
+        # ## Checked - AMA 13JUN19
+        """ titin connection loop format:
+        link_list = []
+        num = 0
+        an_list = [0, 1, 2, 2, 3, 0]
+        for half in range(0, 2):
+            mf_list = [0, 1, 2]
+            af_list = [1, 2, 2]
 
-                for quart in range(0, 2): 
-                    for eighth in range(0, 2):
-                        for triple in range(0, 3):
-                            mn = eighth + half * 2
-                            mf = mflist[triple]
-                            an = anlist[triple + eighth * 3]
-                            af = aflist[triple]
-                            linklist.append((num, mn, mf, an, af))
-                            num += 1
-                    mflist = [5,4,3]
-                    aflist = [1,0,0]
-                    for i in range(0,len(anlist)):
-                        anlist[i] = anlist[i] - half * 8 + 4
-                anlist = [5,6,7,7,4,5]
+            for quart in range(0, 2):
+                for eighth in range(0, 2):
+                    for triple in range(0, 3):
+                        m_n = eighth + half * 2
+                        m_f = mf_list[triple]
+                        a_n = an_list[triple + eighth * 3]
+                        a_f = af_list[triple]
+                        link_list.append((num, m_n, m_f, a_n, a_f))
+                        num += 1
+                mf_list = [5, 4, 3]
+                af_list = [1, 0, 0]
+                for i in range(0, len(an_list)):
+                    an_list[i] = an_list[i] - half * 8 + 4
+            an_list = [5, 6, 7, 7, 4, 5]
 
-            for item in linklist:
-                print("ti.Titin(self, " + str(item[0]) + ", ti_thick(" +
-                      str(item[1]) + ", " + str(item[2]) + "), ti_thin(" +
-                      str(item[3]) + ", " + str(item[4]) + "), a=a, b=b),")'''
+        for item in link_list:
+            print("ti.Titin(self, " + str(item[0]) + ", ti_thick(" +
+                  str(item[1]) + ", " + str(item[2]) + "), ti_thin(" +
+                  str(item[3]) + ", " + str(item[4]) + "), a=a, b=b),")
+        # """
+
         a = None
         b = None
         if titin_params is not None:
@@ -721,7 +723,7 @@ class hs:
 
     def radial_tension(self):
         """The sum of the thick filaments' radial tensions"""
-        return sum([t.radialtension() for t in self.thick])
+        return sum([t.radial_tension() for t in self.thick])
 
     def radial_force(self):
         """The sum of the thick filaments' radial forces, as a (y,z) vector"""
@@ -747,7 +749,7 @@ class hs:
 
     def _get_residual(self):
         """Get the residual force at every point in the half-sarcomere"""
-        thick_f = np.hstack([t.axialforce() for t in self.thick])
+        thick_f = np.hstack([t.axial_force() for t in self.thick])
         thin_f = np.hstack([t.axialforce() for t in self.thin])
         mash = np.hstack([thick_f, thin_f])
         return mash
@@ -761,7 +763,7 @@ class hs:
         return frac_in_state
 
     def update_ls_from_poisson_ratio(self):
-        """Update the lattice spacing consistant with the poisson ratio,
+        """Update the lattice spacing consistent with the poisson ratio,
         initial lattice spacing, current z-line, and initial z-line
 
         Governing equations
