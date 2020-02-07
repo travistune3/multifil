@@ -12,13 +12,12 @@ Created by Joe Powers and Dave Williams on 2017-02-17
 import numpy as np
 import warnings
 import numpy.random as random
-random.seed() # Ensure proper seeding
+random.seed()   # Ensure proper seeding
 
 
 class Titin:
     """This is all about the titin filament"""
-    def __init__(self, parent_lattice, index, thick_face, thin_face,
-        a=240, b=0.0045):
+    def __init__(self, parent_lattice, index, thick_face, thin_face, a=240, b=0.0045):
         """Initialize the titin filament.
 
         Parameters:
@@ -43,9 +42,9 @@ class Titin:
         self.thin_face = thin_face
         # Link titin to that face of the thin filament
         self.thin_face.link_titin(self)
-        ## And now we declare titin properties that will be used to
-        ## calculate forces
-        self.rest = 120 #nm, no citation
+        # ## And now we declare titin properties that will be used to
+        # ## calculate forces
+        self.rest = 120     # nm, no citation TODO cite
         # Create the constants that determine force NOTE IMPROVE DOC
         # NOTE: IMPROVE DEFAULT ARGUMENT LOGIC - AMA19JUN19
         if a is None:
@@ -81,7 +80,7 @@ class Titin:
         """
         # Check for index mismatch
         read, current = tuple(td['address']), self.address
-        assert read==current, "index mismatch at %s/%s"%(read, current)
+        assert read == current, "index mismatch at %s/%s" % (read, current)
         # Local keys
         self.a = td['a']
         self.b = td['b']
@@ -92,7 +91,7 @@ class Titin:
             td['thin_face'])
 
     def angle(self):
-        """Caclulate the angle the titin makes relative to thick filament"""
+        """Calculate the angle the titin makes relative to thick filament"""
         act_loc = self.thin_face.parent_thin.parent_lattice.z_line
         myo_loc = self.thick_face.get_axial_location(-1)
         ls = self.parent_lattice.lattice_spacing
@@ -104,12 +103,12 @@ class Titin:
         act_loc = self.thin_face.parent_thin.parent_lattice.z_line
         myo_loc = self.thick_face.get_axial_location(-1)
         ls = self.parent_lattice.lattice_spacing
-        length = np.sqrt( (act_loc-myo_loc)*(act_loc-myo_loc) + ls*ls )
+        length = np.sqrt((act_loc-myo_loc) * (act_loc-myo_loc) + ls * ls)
         return length
 
     def stiffness(self):
-        """Need instintanious stiffness at the current length to normalize
-        force for settling at each timestep. We get this as the derivitive of
+        """Need instantaneous stiffness at the current length to normalize
+        force for settling at each timestep. We get this as the derivative of
         force with respect to x. D[a*exp(b*x), x] = a*b*exp(b*x)
         """
         return self.force()*self.b
@@ -118,39 +117,39 @@ class Titin:
         """Calculate the total force the titin filament exerts"""
         length = self.length()
         if length < self.rest:
-            return 0 # titin buckles
+            return 0    # titin buckles
         else:
-            #Exponential Model
+            # # ## Exponential Model
             x = length - self.rest
             return self.a*np.exp(self.b*x)
-        #else:
-            #Cubic model
-            #x = length - self.rest
-            #a = 3.25e-5
-            #b = -5e-3
-            #c = 9e-1
-            #d = -7e-5
-            #return a*(x**3) + b*(x**2) + c*x + d #Linke et al. PNAS 1998
-        #else:
-            # Sawtooth Model
-            #extension = length - self.rest
-            #a = 1.2e-6
-            #b = 3
-            #c = 0.5e-6#*random.rand()
-            #d = 34
-            #e = 3
-            #return a*extension**b + c*np.fmod(extension,d)**e
-        #else:
-            #Hookean Model
-            #return self.k * (self.length() - self.rest)
+        # else:
+            # Cubic model
+            # x = length - self.rest
+            # a = 3.25e-5
+            # b = -5e-3
+            # c = 9e-1
+            # d = -7e-5
+            # return a*(x**3) + b*(x**2) + c*x + d #Linke et al. PNAS 1998
+        # else:
+            # # ## Sawtooth Model
+            # extension = length - self.rest
+            # a = 1.2e-6
+            # b = 3
+            # c = 0.5e-6#*random.rand()
+            # d = 34
+            # e = 3
+            # return a*extension**b + c*np.fmod(extension,d)**e
+        # else:
+            # # ## Hookean Model
+            # return self.k * (self.length() - self.rest)
 
-    def axialforce(self):
+    def axial_force(self):
         """Return the total force the titin filament exerts on the
         thick filament's final node, (negate for the thin filament side)
         """
-        return self.force() * np.cos(self.angle()) ## CHECK_JDP ##
+        return self.force() * np.cos(self.angle())  # ## CHECK_JDP ## # TODO Check
 
-    def radialforce(self):
+    def radial_force(self):
         """Return the force in the radial direction (positive is compressive)
         TODO: The 'positive is compressive' part needs to be double checked
         """

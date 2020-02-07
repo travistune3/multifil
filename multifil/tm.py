@@ -58,8 +58,8 @@ class TmSite:
         self.state = 0
         # ## Kinetics from Tanner 2007, 2012, and thesis
         K1 = 1e5  # per mole Ca
-        K2 = 10  # unitless
-        K3 = 1e6  # unitless
+        K2 = 10  # unit-less
+        K3 = 1e6  # unit-less
         k_12 = 5e5  # per mole Ca per sec
         k_23 = 10  # per sec
         k_31 = 5  # per sec
@@ -92,36 +92,36 @@ class TmSite:
             _K1 - _K3: kinetic balances for reverse rates
         Returns
         -------
-        tmsd: dict
+        tms_d: dict
             tropomyosin site dictionary
         """
-        tmsd = self.__dict__.copy()
-        tmsd.pop('parent_tm')
-        tmsd.pop('index')
-        tmsd['binding_site'] = tmsd['binding_site'].address
-        return tmsd
+        tms_d = self.__dict__.copy()
+        tms_d.pop('parent_tm')
+        tms_d.pop('index')
+        tms_d['binding_site'] = tms_d['binding_site'].address
+        return tms_d
 
-    def from_dict(self, tmsd):
+    def from_dict(self, tms_d):
         """ Load values from a tropomyosin site dict. 
         
         Values read correspond to output documented in :to_dict:.
         """
         # Check for index mismatch
-        read, current = tuple(tmsd['address']), self.address
+        read, current = tuple(tms_d['address']), self.address
         assert read == current, "index mismatch at %s/%s" % (read, current)
         # Local/remote keys
         self.binding_site = self.parent_tm.parent_thin.parent_lattice. \
-            resolve_address(tmsd['binding_site'])
+            resolve_address(tms_d['binding_site'])
         self.binding_site.tm_site = self
         # Local keys
-        self.state = tmsd['_state']
-        self._k_12 = tmsd['_k_12']
-        self._k_23 = tmsd['_k_23']
-        self._k_31 = tmsd['_k_31']
-        self._K1 = tmsd['_K1']
-        self._K2 = tmsd['_K2']
-        self._K3 = tmsd['_K3']
-        self._coop = tmsd['_coop']
+        self.state = tms_d['_state']
+        self._k_12 = tms_d['_k_12']
+        self._k_23 = tms_d['_k_23']
+        self._k_31 = tms_d['_k_31']
+        self._K1 = tms_d['_K1']
+        self._K2 = tms_d['_K2']
+        self._K3 = tms_d['_K3']
+        self._coop = tms_d['_coop']
         return
 
     @property
@@ -217,6 +217,9 @@ class TmSite:
         forward = self._k_12 * self.ca * self.ca * self._concentrations['free_tm']
         coop = self._coop if self.subject_to_cooperativity else 1
         forward *= coop
+
+        forward = self._k_12 * self.ca * self.ca * self._coop
+
         return forward
 
     def _r21(self):
@@ -251,7 +254,10 @@ class TmSite:
         k_13 = self._k_31 / self._K3
         reverse = k_13 * self.ca * self.ca * self._concentrations['free_tm']
         reverse *= self._r23()
-        return reverse
+
+        return self._r23() * self._r12()
+
+        # return reverse
 
     def _prob(self, rate):
         """ Convert a rate to a probability, based on the current timestep

@@ -251,12 +251,12 @@ class ThickFace:
 
     def axial_force(self):
         """Return the total axial force of the face's cross-bridges"""
-        axial = [crossbridge.axialforce() for crossbridge in self.xb]
+        axial = [crossbridge.axial_force() for crossbridge in self.xb]
         return sum(axial)
 
     def radial_tension(self):
         """Sum of the absolute values of radial force for every myosin"""
-        radial = [crossbridge.radialforce() for crossbridge in self.xb]
+        radial = [crossbridge.radial_force() for crossbridge in self.xb]
         return sum(radial)
 
     def radial_force(self):
@@ -267,7 +267,7 @@ class ThickFace:
         Returns:
             radial_force: sum of radial force of each myosin along the face
         """
-        radial = [crossbridge.radialforce() for crossbridge in self.xb]
+        radial = [crossbridge.radial_force() for crossbridge in self.xb]
         return sum(radial)
 
     def transition(self):
