@@ -218,7 +218,7 @@ class TmSite:
         coop = self._coop if self.subject_to_cooperativity else 1
         forward *= coop
 
-        forward = self._k_12 * self.ca * self.ca * self._coop
+        forward = self._k_12 * self.ca * self._coop
 
         return forward
 
@@ -255,7 +255,7 @@ class TmSite:
         reverse = k_13 * self.ca * self.ca * self._concentrations['free_tm']
         reverse *= self._r23()
 
-        return self._r23() * self._r12()
+        return reverse
 
         # return reverse
 
@@ -402,15 +402,19 @@ class Tropomyosin:
 
     def transition(self):
         """Chunk through all binding sites, transition if need be"""
-        all_sites = self.sites.copy()
-        remaining_sites = self._roll_for_activation(all_sites)
-        for site in remaining_sites:
-            site.transition()
-        #         for site in self.sites:
-        #             site.transition(concentrations)
-        #         # Spread activation
-        #         self._spread_activation()
 
+        """Activation spread method - 1"""
+        # all_sites = self.sites.copy()
+        # remaining_sites = self._roll_for_activation(all_sites)
+        # for site in remaining_sites:
+        #     site.transition()
+        """Activation spread method - 2"""
+        for site in self.sites:
+            site.transition()
+        # Spread activation
+        self._spread_activation()
+
+        """Reporting """    # TODO remove at some point
         total = 0
         for site in self.sites:
             if site.state == 2:

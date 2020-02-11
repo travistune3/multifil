@@ -649,7 +649,7 @@ class hs:
     def update_volume(self):
         """re-calculate the fluid volume of the half sarcomere - ASSUMING CONSTANT LATTICE SPACING
         returns volume in L(AMA-3FEB2020)
-        (nm3 AMA-11JAN2020"""
+        (Used to be and no longer is nm3 AMA-11JAN2020)"""
         ls = self._lattice_spacing
         length = self._z_line
 
