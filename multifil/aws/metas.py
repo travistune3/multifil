@@ -207,7 +207,7 @@ def emit(path_local, path_s3, time,  poisson=0.0, ls=None, z_line=None,
     rund['pCa'] = pCa
     rund['timestep_length'] = np.diff(time)[0]
     rund['timestep_number'] = len(time)
-    ## Include kwargs
+    ## Include mf_params
     for k in kwargs:
         rund[k] = kwargs[k]
     ## Write out the run description

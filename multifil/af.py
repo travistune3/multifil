@@ -9,6 +9,7 @@ Created by Dave Williams on 2010-01-04.
 """
 
 import numpy as np
+
 from . import tm
 
 
@@ -348,7 +349,7 @@ class ThinFilament:
     [Squire1981]:http://dx.doi.org/10.1007/978-1-4613-3183-4
     [Gunning2015]:http://dx.doi.org/10.1242/jcs.172502
     """
-    def __init__(self, parent_lattice, index, face_orientations, start=0):
+    def __init__(self, parent_lattice, index, face_orientations, start=0, **af_params):
         """Initialize the thin filament
 
         Parameters:
@@ -386,6 +387,9 @@ class ThinFilament:
         # Remember who you are
         self.index = index
         self.address = ('thin_fil', self.index)
+        tm_params = {}
+        if 'tm_params' in af_params.keys():
+            tm_params = af_params.pop("tm_params")
         # TODO The creation of the monomer positions and angles should be refactored into a static function of similar.
         # Figure out axial positions, see Howard pg 125
         mono_per_poly = 26  # actin monomers in an actin polymer unit
@@ -448,12 +452,32 @@ class ThinFilament:
         for bs, ax in zip(self.binding_sites, axial_flat):
             mono_index = monomer_positions.index(ax)
             bs_by_two_start[mono_index % 2].append(bs)
-        self.tm = [tm.Tropomyosin(self, bs_chain, ind) for 
+        self.tm = [tm.Tropomyosin(self, bs_chain, ind, **tm_params) for
                    ind, bs_chain in enumerate(bs_by_two_start)]
         # Other thin filament properties to remember
         self.number_of_nodes = len(self.binding_sites)
         self.thick_faces = None     # Set after creation of thick filaments
         self.k = 1743
+
+        """Handle af_params"""
+        self.tm_constants = {}
+        for tropomyosin in self.tm:
+            constants = tropomyosin.constants
+            for key in constants.keys():
+                if key in self.tm_constants.keys():
+                    self.tm_constants[key].update(constants[key])
+                else:
+                    self.tm_constants[key] = constants[key]
+
+        self.af_constants = {}     # A dictionary containing constants changed by the user
+
+        # set spring constant
+        if 'af_k' in af_params.keys():
+            self.k = af_params.pop('af_k')
+        self.af_constants['af_k'] = self.k
+
+        for param in af_params:
+            print("Unknown af_param:", param)
 
     def to_dict(self):
         """Create a JSON compatible representation of the thin filament

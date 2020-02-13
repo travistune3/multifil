@@ -16,12 +16,6 @@ from . import af
 from . import mf
 from . import ti
 
-# Parameter Standards
-HS_MF_K = 0
-HS_AF_K = 1
-HS_TI_A = 0
-HS_TI_B = 1
-
 
 class hs:
     """The half-sarcomere and ways to manage it"""
@@ -124,10 +118,51 @@ class hs:
         # Versioning, to be updated when backwards incompatible changes to the
         # data structure are made, not on release of new features
         self.version = 1.4  # Includes support for tropomyosin AND titin
-        # Begin handling kwargs
-        titin_params = None
-        if 'ti_params' in kwargs.keys():
-            titin_params = kwargs['ti_params']
+
+        """ ## Handle Kwargs ## """
+        # Titin constants
+        ti_params = {}
+        if 'ti_a' in kwargs.keys():
+            ti_params['ti_a'] = kwargs.pop('ti_a')
+        if 'ti_b' in kwargs.keys():
+            ti_params['ti_b'] = kwargs.pop('ti_b')
+
+        # Tropomyosin/Troponin constants
+        tm_params = {}
+        if 'tm_coop' in kwargs.keys():
+            tm_params['tm_coop'] = kwargs.pop('tm_coop')
+
+        # Actin constants
+        af_params = {"tm_params": tm_params}
+        if 'af_k' in kwargs.keys():
+            af_params['af_k'] = kwargs.pop('af_k')
+
+        # Crossbridge constants
+
+        valid_mh_params = mf.mh.Crossbridge.VALID_PARAMS
+        if 'mh_iso' in kwargs.keys():
+            for param in valid_mh_params:
+                assert param not in kwargs.keys(), "mh_iso cannot be set at the same time as mh parameters"
+            mf_params = {"mh_iso": kwargs.pop('mh_iso')}
+        else:
+            mh_params = {}
+            for param in valid_mh_params:
+                if param in kwargs.keys():
+                    mh_params[param] = kwargs.pop(param)
+            mf_params = {"mh_params": mh_params}
+
+        # ## Myosin Thick filament constants
+        # mf_params = {} # constructed in crossbridge parameter logic
+        valid_mf_params = mf.ThickFilament.VALID_PARAMS
+        for param in valid_mf_params:
+            if param in kwargs.keys():
+                mf_params[param] = kwargs.pop(param)
+
+        # print undigested kwargs
+        for key in kwargs.keys():
+            print("Unknown Kwarg:", key)
+        """ ## Finished Handling Kwargs ## """
+
         # Parse initial LS and Z-line
         if time_dependence is not None:
             if 'lattice_spacing' in time_dependence:
@@ -168,7 +203,7 @@ class hs:
         self._thin_starts = thin_starts
         thin_ids = range(len(thin_orientations))
         new_thin = lambda thin_id: af.ThinFilament(self, thin_id, thin_orientations[thin_id],
-                                                   thin_starts[thin_id])
+                                                   thin_starts[thin_id], **af_params)
         self.thin = tuple([new_thin(thin_id) for thin_id in thin_ids])
         # Determine the hiding line
         self.hiding_line = None
@@ -211,22 +246,22 @@ class hs:
                 self.thin[0].thin_faces[1], self.thin[1].thin_faces[2],
                 self.thin[2].thin_faces[2], self.thin[6].thin_faces[0],
                 self.thin[5].thin_faces[0], self.thin[4].thin_faces[1]),
-                             thick_starts[0]),
+                             thick_starts[0], **mf_params),
             mf.ThickFilament(self, 1, (
                 self.thin[2].thin_faces[1], self.thin[3].thin_faces[2],
                 self.thin[0].thin_faces[2], self.thin[4].thin_faces[0],
                 self.thin[7].thin_faces[0], self.thin[6].thin_faces[1]),
-                             thick_starts[1]),
+                             thick_starts[1], **mf_params),
             mf.ThickFilament(self, 2, (
                 self.thin[5].thin_faces[1], self.thin[6].thin_faces[2],
                 self.thin[7].thin_faces[2], self.thin[3].thin_faces[0],
                 self.thin[2].thin_faces[0], self.thin[1].thin_faces[1]),
-                             thick_starts[2]),
+                             thick_starts[2], **mf_params),
             mf.ThickFilament(self, 3, (
                 self.thin[7].thin_faces[1], self.thin[4].thin_faces[2],
                 self.thin[5].thin_faces[2], self.thin[1].thin_faces[0],
                 self.thin[0].thin_faces[0], self.thin[3].thin_faces[1]),
-                             thick_starts[3])
+                             thick_starts[3], **mf_params)
         )
         # Now the thin filaments need to be linked to thick filaments, use
         # the face orders from above and the following arrangement:
@@ -308,44 +343,39 @@ class hs:
         for item in link_list:
             print("ti.Titin(self, " + str(item[0]) + ", ti_thick(" +
                   str(item[1]) + ", " + str(item[2]) + "), ti_thin(" +
-                  str(item[3]) + ", " + str(item[4]) + "), a=a, b=b),")
+                  str(item[3]) + ", " + str(item[4]) + "), **ti_params),")
         # """
 
-        a = None
-        b = None
-        if titin_params is not None:
-            a = titin_params[HS_TI_A]
-            b = titin_params[HS_TI_B]
         ti_thick = lambda thick_i, j: self.thick[thick_i].thick_faces[j]
         ti_thin = lambda thin_i, j: self.thin[thin_i].thin_faces[j]
         self.titin = (
-            ti.Titin(self, 0, ti_thick(0, 0), ti_thin(0, 1), a=a, b=b),
-            ti.Titin(self, 1, ti_thick(0, 1), ti_thin(1, 2), a=a, b=b),
-            ti.Titin(self, 2, ti_thick(0, 2), ti_thin(2, 2), a=a, b=b),
-            ti.Titin(self, 3, ti_thick(1, 0), ti_thin(2, 1), a=a, b=b),
-            ti.Titin(self, 4, ti_thick(1, 1), ti_thin(3, 2), a=a, b=b),
-            ti.Titin(self, 5, ti_thick(1, 2), ti_thin(0, 2), a=a, b=b),
+            ti.Titin(self, 0, ti_thick(0, 0), ti_thin(0, 1), **ti_params),
+            ti.Titin(self, 1, ti_thick(0, 1), ti_thin(1, 2), **ti_params),
+            ti.Titin(self, 2, ti_thick(0, 2), ti_thin(2, 2), **ti_params),
+            ti.Titin(self, 3, ti_thick(1, 0), ti_thin(2, 1), **ti_params),
+            ti.Titin(self, 4, ti_thick(1, 1), ti_thin(3, 2), **ti_params),
+            ti.Titin(self, 5, ti_thick(1, 2), ti_thin(0, 2), **ti_params),
 
-            ti.Titin(self, 6, ti_thick(0, 5), ti_thin(4, 1), a=a, b=b),
-            ti.Titin(self, 7, ti_thick(0, 4), ti_thin(5, 0), a=a, b=b),
-            ti.Titin(self, 8, ti_thick(0, 3), ti_thin(6, 0), a=a, b=b),
-            ti.Titin(self, 9, ti_thick(1, 5), ti_thin(6, 1), a=a, b=b),
-            ti.Titin(self, 10, ti_thick(1, 4), ti_thin(7, 0), a=a, b=b),
-            ti.Titin(self, 11, ti_thick(1, 3), ti_thin(4, 0), a=a, b=b),
+            ti.Titin(self, 6, ti_thick(0, 5), ti_thin(4, 1), **ti_params),
+            ti.Titin(self, 7, ti_thick(0, 4), ti_thin(5, 0), **ti_params),
+            ti.Titin(self, 8, ti_thick(0, 3), ti_thin(6, 0), **ti_params),
+            ti.Titin(self, 9, ti_thick(1, 5), ti_thin(6, 1), **ti_params),
+            ti.Titin(self, 10, ti_thick(1, 4), ti_thin(7, 0), **ti_params),
+            ti.Titin(self, 11, ti_thick(1, 3), ti_thin(4, 0), **ti_params),
 
-            ti.Titin(self, 12, ti_thick(2, 0), ti_thin(5, 1), a=a, b=b),
-            ti.Titin(self, 13, ti_thick(2, 1), ti_thin(6, 2), a=a, b=b),
-            ti.Titin(self, 14, ti_thick(2, 2), ti_thin(7, 2), a=a, b=b),
-            ti.Titin(self, 15, ti_thick(3, 0), ti_thin(7, 1), a=a, b=b),
-            ti.Titin(self, 16, ti_thick(3, 1), ti_thin(4, 2), a=a, b=b),
-            ti.Titin(self, 17, ti_thick(3, 2), ti_thin(5, 2), a=a, b=b),
+            ti.Titin(self, 12, ti_thick(2, 0), ti_thin(5, 1), **ti_params),
+            ti.Titin(self, 13, ti_thick(2, 1), ti_thin(6, 2), **ti_params),
+            ti.Titin(self, 14, ti_thick(2, 2), ti_thin(7, 2), **ti_params),
+            ti.Titin(self, 15, ti_thick(3, 0), ti_thin(7, 1), **ti_params),
+            ti.Titin(self, 16, ti_thick(3, 1), ti_thin(4, 2), **ti_params),
+            ti.Titin(self, 17, ti_thick(3, 2), ti_thin(5, 2), **ti_params),
 
-            ti.Titin(self, 18, ti_thick(2, 5), ti_thin(1, 1), a=a, b=b),
-            ti.Titin(self, 19, ti_thick(2, 4), ti_thin(2, 0), a=a, b=b),
-            ti.Titin(self, 20, ti_thick(2, 3), ti_thin(3, 0), a=a, b=b),
-            ti.Titin(self, 21, ti_thick(3, 5), ti_thin(3, 1), a=a, b=b),
-            ti.Titin(self, 22, ti_thick(3, 4), ti_thin(0, 0), a=a, b=b),
-            ti.Titin(self, 23, ti_thick(3, 3), ti_thin(1, 0), a=a, b=b),
+            ti.Titin(self, 18, ti_thick(2, 5), ti_thin(1, 1), **ti_params),
+            ti.Titin(self, 19, ti_thick(2, 4), ti_thin(2, 0), **ti_params),
+            ti.Titin(self, 20, ti_thick(2, 3), ti_thin(3, 0), **ti_params),
+            ti.Titin(self, 21, ti_thick(3, 5), ti_thin(3, 1), **ti_params),
+            ti.Titin(self, 22, ti_thick(3, 4), ti_thin(0, 0), **ti_params),
+            ti.Titin(self, 23, ti_thick(3, 3), ti_thin(1, 0), **ti_params),
         )
         '''Initialize the last few variables'''
         # Set the timestep for all our new cross-bridges
@@ -363,6 +393,18 @@ class hs:
         self.last_transitions = None
         self._volume = None
         self.update_volume()
+
+        # Now that we are making constants more accessible, we need to track them
+        self.constants = {'ti': {titin.index: titin.constants for titin in self.titin},
+                          'af': {actin.index: actin.af_constants for actin in self.thin},
+                          'mf': {myosin.index: myosin.mf_constants for myosin in self.thick},
+                          'tm': {},
+                          'mh': {}}
+
+        for myosin in self.thick:
+            self.constants['mh'].update(myosin.mh_constants)
+        for actin in self.thin:
+            self.constants['tm'].update(actin.tm_constants)
 
     def to_dict(self):
         """Create a JSON compatible representation of the thick filament

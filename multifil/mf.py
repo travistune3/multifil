@@ -131,7 +131,7 @@ class ThickFace:
     Further discussion is located in the "ThickFilament" documentation.
     """
     def __init__(self, parent_filament, axial_locations, thin_face,
-            index, start):
+            index, start, **mh_params):
         """Instantiate the thick filament face with its heads
 
         Parameters:
@@ -158,7 +158,7 @@ class ThickFace:
             for i in range(len(axial_locations)):
                 # and add cross-bridges at the appropriate locations.
                 if crown_level in (1, 3):
-                    head = mh.Crossbridge(i, self, thin_face)
+                    head = mh.Crossbridge(i, self, thin_face, **mh_params)
                     self.xb.append(head)
                     self.xb_by_crown.append(head)
                 elif crown_level == 2:
@@ -170,7 +170,7 @@ class ThickFace:
                 if crown_level in (1, 3):
                     self.xb_by_crown.append(None)
                 elif crown_level == 2:
-                    head = mh.Crossbridge(i, self, thin_face)
+                    head = mh.Crossbridge(i, self, thin_face, **mh_params)
                     self.xb.append(head)
                     self.xb_by_crown.append(head)
                 crown_level = crown_level % 3 + 1
@@ -302,7 +302,9 @@ class ThickFilament:
     It is attached to the m-line at one end and to nothing
     at the other (yet).
     """
-    def __init__(self, parent_lattice, index, thin_faces, start):
+    VALID_PARAMS = ['mf_k']
+
+    def __init__(self, parent_lattice, index, thin_faces, start, **mf_params):
         """Initialize the thick filament.
 
         Parameters:
@@ -409,6 +411,13 @@ class ThickFilament:
         # Remember who you are
         self.index = index
         self.address = ('thick_fil', index)
+        """Extract crossbridge parameters"""
+        mh_params = {}
+        if 'mh_params' in mf_params.keys():
+            mh_params = mf_params.pop('mh_params')
+        elif 'mh_iso' in mf_params.keys():
+            mh_params = {'mh_iso': mf_params.pop('mh_iso')}
+
         # Create a list of crown axial locations and relevant data
         bare_zone = 58  # Length of the area before any crowns, nm
         crown_spacing = 14.3    # Spacing between adjacent crowns, nm
@@ -419,7 +428,7 @@ class ThickFilament:
         self.thick_faces = []
         for face_index in range(len(thin_faces)):
             self.thick_faces.append(ThickFace(self, self.axial,
-                thin_faces[face_index], face_index, start))
+                thin_faces[face_index], face_index, start, **mh_params))
         # Find the crown levels (1, 2, or 3) and orientation vectors
         crown_levels = [(n + start - 1) % 3 + 1 for n in range(n_cr)]
         crown_orientations = [0 + (level == 2) for level in crown_levels]
@@ -442,6 +451,23 @@ class ThickFilament:
         self.thin_faces = thin_faces
         self.k = 2020   # Spring constant of thick filament in pN/nm
         self.b_z = bare_zone
+
+        """Handle mf_params"""
+        self.mh_constants = {}
+        for face in self.thick_faces:
+            for xb in face.xb:
+                constants = xb.constants
+                xb_index = str(self.index) + "_" + str(xb.index)
+                self.mh_constants[xb_index] = constants
+
+        self.mf_constants = {}  # A dictionary containing constants able to be overridden by the user
+
+        if 'mf_k' in mf_params.keys():
+            self.k = mf_params.pop('mf_k')
+        self.mf_constants['mf_k'] = self.k
+
+        for param in mf_params:
+            print("Unknown mf_param:", param)
 
     def __str__(self):
         """String representation of the thick filament"""

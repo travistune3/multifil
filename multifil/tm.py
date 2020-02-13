@@ -5,9 +5,13 @@ tm.py - A tropomyosin filament
 Create and maintain a tropomyosin filament and the subgroups that comprise it.
 Created by Dave Williams on 2017-12-03.
 """
+from _operator import indexOf
 
 import numpy as np
-from _operator import indexOf
+
+random = np.random
+
+random.seed()
 
 
 class TmSite:
@@ -36,7 +40,11 @@ class TmSite:
     No rates include a temperature dependence. 
     """
 
-    def __init__(self, parent_tm, binding_site, index):
+    # kwargs that can be used to edit tm_site phenotype
+    # tm_site can also accept phenotype profiles
+    VALID_PARAMS = ['tm_coop']
+
+    def __init__(self, parent_tm, binding_site, index, **tm_params):
         """ A single tropomyosin site, paired to a binding site
         Parameters
         ----------
@@ -72,6 +80,29 @@ class TmSite:
         self._k_12, self._k_23, self._k_31 = k_12, k_23, k_31
         self._coop = coop
         self._concentrations = None
+
+        """Handle tm_params"""
+        # ## Handle tm_isomer calculations
+        if 'tm_iso' in tm_params.keys():  # !!! This means we don't actually have settings to pass yet !!!
+            tm_params = tm_params['tm_iso']
+            cum_sum = 0
+            rolled_val = random.random()
+            keys = list(tm_params.keys())
+            k_i = 0
+            while cum_sum < rolled_val:
+                probability = float(keys[k_i]) / 100.0
+                cum_sum += probability
+                k_i += 1
+            tm_params = tm_params[keys[k_i - 1]]    # actually select the params and proceed as normal
+
+        self.constants = {}
+
+        if 'tm_coop' in tm_params:
+            self._coop = tm_params.pop('tm_coop')
+        self.constants['tm_coop'] = self._coop
+
+        for param in tm_params.keys():
+            print("Unknown tm_param:", param)
 
     def __str__(self):
         """Representation of the tmsite for printing"""
@@ -326,7 +357,7 @@ class Tropomyosin:
     interaction structure, but it is a reasonable first pass. 
     """
 
-    def __init__(self, parent_thin, binding_sites, index):
+    def __init__(self, parent_thin, binding_sites, index, **tm_params):
         """A strand of tropomyosin chains
         
         Save the binding sites along a set of tropomyosin strands, 
@@ -345,8 +376,9 @@ class Tropomyosin:
         self.parent_thin = parent_thin
         self.index = index
         self.address = ("tropomyosin", parent_thin.index, index)
+
         # ## What is your population?
-        self.sites = [TmSite(self, bs, ind) for ind, bs in
+        self.sites = [TmSite(self, bs, ind, **tm_params) for ind, bs in
                       enumerate(binding_sites)]
         # ## How does activation spread?
         # Material properties belong to tm chain, but actual span is 
@@ -355,6 +387,12 @@ class Tropomyosin:
         self.span_steep = 1  # how steep the influence curve is
         self.span_force50 = -8  # force at which span is decreased by half
         self.span = None
+
+        self.constants = {}
+        for tm_site in self.sites:
+            constants = tm_site.constants
+            tm_index = str(self.parent_thin.index) + "_" + str(self.index) + '_' + str(tm_site.index)
+            self.constants[tm_index] = constants
 
     def to_dict(self):
         """Create a JSON compatible representation of the tropomyosin chain
@@ -403,18 +441,18 @@ class Tropomyosin:
     def transition(self):
         """Chunk through all binding sites, transition if need be"""
 
-        """Activation spread method - 1"""
+        """Activation spread method - 1 Anthony's Spreading"""
         # all_sites = self.sites.copy()
         # remaining_sites = self._roll_for_activation(all_sites)
         # for site in remaining_sites:
         #     site.transition()
-        """Activation spread method - 2"""
+        """Activation spread method - 2 Original Cooperation"""
         for site in self.sites:
             site.transition()
         # Spread activation
         self._spread_activation()
 
-        """Reporting """    # TODO remove at some point
+        """Reporting """  # TODO remove at some point
         total = 0
         for site in self.sites:
             if site.state == 2:
