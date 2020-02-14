@@ -485,6 +485,10 @@ class hs:
             print_every: how many timesteps to print update after
         Returns:
             output: the results of the callback after each timestep
+            exit_code: how the simulation was terminated
+                0 - exited successfully
+                1 - general error
+                130 - CTRL-C ~ User Interrupt
         """
         # Callback defaults to the axial force at the M-line
         if callback is None:

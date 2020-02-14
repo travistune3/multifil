@@ -11,6 +11,7 @@ import numpy as np
 
 random = np.random
 
+# noinspection PyArgumentList
 random.seed()
 
 
@@ -249,7 +250,7 @@ class TmSite:
         coop = self._coop if self.subject_to_cooperativity else 1
         forward *= coop
 
-        forward = self._k_12 * self.ca * self._coop
+        # forward = self._k_12 * self.ca * self._coop
 
         return forward
 
@@ -270,6 +271,9 @@ class TmSite:
         """Rate of TnI TnC detachment"""
         k_32 = self._k_23 / self._K2
         reverse = k_32
+
+        # forward = self._r23()
+        # reverse = forward / self._K2
         return reverse
 
     def _r31(self):
