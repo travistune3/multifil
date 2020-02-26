@@ -13,8 +13,6 @@ warnings.filterwarnings(action='once')
 
 
 def run_async(profiles, force=False):
-    start = millis.time()
-    processes = []
     if len(profiles) >= mp.cpu_count():
         if not force:
             max_threads = max(2, int(0.75 * mp.cpu_count()))
@@ -22,13 +20,16 @@ def run_async(profiles, force=False):
         else:
             print("More instances than threads, forcing anyway")
 
-    for profile in profiles:
-        processes.append(mp.Process(target=run_model, args=(profile,)))
-    for process in processes:
-        process.start()
-    for process in processes:
-        process.join()
+    start = millis.time()
 
+    pool = mp.Pool(len(profiles))
+
+    try:
+        processes = pool.map(run_model, profiles)
+    except KeyboardInterrupt:
+        pool.terminate()
+
+    print(processes)
     end = millis.time()
     print(end - start, "seconds")
 
@@ -44,13 +45,21 @@ def run_model(profile):
         dir_warning = 'output directory not specified. Defaulting to\n\t' + str(output_dir)
         warnings.warn(dir_warning)
 
+    bar = True
+    if 'tm_bar' in profile.keys():
+        bar = hs.hs.tm_bar
+
+    every = 100
+    if 'every' in profile.keys():
+        every = profile['every']
+
     td = {'pCa': actin}
     sarc = hs.hs(time_dependence=td, timestep_len=0.5)
     ts = len(actin) - 1
 
     start_model = millis.time()
     run_id = str(uuid.uuid1())
-    result, exit_code = sarc.run(time_steps=ts, every=100)
+    result, exit_code = sarc.run(time_steps=ts, every=every, bar=bar)
     file_path = output_dir + str(run_id) + ".data.json"
     with open(file_path, 'w') as outputFile:
         json.dump(result, outputFile)

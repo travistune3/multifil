@@ -391,6 +391,7 @@ class hs:
 
         # ## variables previously initialized in methods (hiding line included above)
         self.last_transitions = None
+        self.tm_transitions = None
         self._volume = None
         self.update_volume()
 
@@ -479,7 +480,7 @@ class hs:
             bar: progress bar control,False means don't display, True
                 means give us the basic progress reports, if a function
                 is passed, it will be called as f(completed_steps,
-                total_steps, sec_left, sec_passed, process_name).
+                total_steps, sec_left, sec_passed, process_name, output).
                 (Defaults to True)
             every: how many timesteps to update after
             print_every: how many timesteps to print update after
@@ -508,14 +509,16 @@ class hs:
         # Run through each timestep
         for i in range(time_steps):
             try:
-                self.timestep(print_state=i % print_every == 0)
+                self.timestep()
                 output = self._append(callback(), output)
                 # Update us on how it went
                 toc = int((time.time() - tic) / (i + 1) * (time_steps - i - 1))
                 proc_name = mp.current_process().name
 
                 if use_bar and i % every == 0:
-                    update_bar(i, time_steps, toc, time.time() - tic, proc_name)
+                    update_bar(i=i, time_steps=time_steps,
+                               toc=toc, tic=time.time() - tic,
+                               proc_name=proc_name, output=output)
             except KeyboardInterrupt:
                 return output, 130
             except Exception as e:
@@ -527,13 +530,20 @@ class hs:
         return output, 0
 
     @staticmethod
-    def print_bar(i, time_steps, toc, tic, proc_name):
-        if tic < -1:
+    def print_bar(i, time_steps, toc, proc_name, **bar_kwargs):
+        if 'tic' in bar_kwargs.keys() and bar_kwargs['tic'] < -1:
             print('Causality has failed')
         sys.stdout.write("\n" + proc_name +
                          " finished timestep %i of %i, %ih%im%is left"
                          % (i + 1, time_steps, toc / 60 / 60, toc / 60 % 60, toc % 60))
         sys.stdout.flush()
+
+    @staticmethod
+    def tm_bar(i, time_steps, toc, proc_name, output, **bar_kwargs):
+        hs.print_bar(i=i, time_steps=time_steps, toc=toc, proc_name=proc_name, **bar_kwargs)
+        if 'tm_fraction_bound' in output.keys():
+            sys.stdout.write("\t\t" + str(output['tm_fraction_bound'][i]))
+            sys.stdout.flush()
 
     @staticmethod
     def _append(data_dict, dictionary):
@@ -544,7 +554,7 @@ class hs:
                 dictionary.update({key: [value]})
         return dictionary
 
-    def timestep(self, current=None, print_state=True):
+    def timestep(self, current=None):
         """Move the model one step forward in time, allowing the
         myosin heads a chance to bind and then balancing forces
         """
@@ -553,21 +563,12 @@ class hs:
             self.current_timestep = current
         else:
             self.current_timestep += 1
+
         # Update bound states
-        if print_state:
-            print(" F", end=" ")
         self.last_transitions = [thick.transition() for thick in self.thick]
-        if print_state:
-            print(" T", end=" ")
         self.update_concentrations()
-        tm_activation = [thin.transition() for thin in self.thin]  # TODO: work into storage
-        active = 0
-        total = 0
-        for i in range(0, len(tm_activation)):
-            active += tm_activation[i][0]
-            total += tm_activation[i][1]
-        if print_state:
-            print(active / total)
+        self.tm_transitions = [thin.transition() for thin in self.thin]  # TODO: work into storage
+
         # Settle forces
         self.settle()
 
@@ -678,6 +679,7 @@ class hs:
         xb_fracs = self.get_frac_in_states()
 
         report.update({"coop": coop / count,
+                       "tm_fraction_bound": self._tnca_count / self._tn_total,
                        "axial_force": self.axial_force(),
                        "ca": self.c_ca,
                        "xb_fraction_free": xb_fracs[0],

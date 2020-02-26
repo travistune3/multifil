@@ -611,22 +611,24 @@ class ThinFilament:
 
     def transition(self):
         """Give self, (well, TMs really) a chance to transition states"""
-        bound = 0
-        total = 0
-        for tropomyosin in self.tm:
-            for tm_site in tropomyosin.sites:
-                if tm_site.state != 0:
-                    bound += 1
-                total += 1
-        # volume = self.parent_lattice.volume
-        # concentrations = {'free_tm':(total-bound) / volume, 'bound_tm': bound/volume}
-        result = [tropomyosin.transition() for tropomyosin in self.tm]
-        active = 0
-        total = 0
-        for i in range(0, len(result)):
-            active += result[i][0]
-            total += result[i][1]
-        return active, total
+        # bound = 0
+        # total = 0
+        # for tropomyosin in self.tm:
+        #     for tm_site in tropomyosin.sites:
+        #         if tm_site.state != 0:
+        #             bound += 1
+        #         total += 1
+        # # volume = self.parent_lattice.volume
+        # # concentrations = {'free_tm':(total-bound) / volume, 'bound_tm': bound/volume}
+        # result = [tropomyosin.transition() for tropomyosin in self.tm]
+        # active = 0
+        # total = 0
+        # for i in range(0, len(result)):
+        #     active += result[i][0]
+        #     total += result[i][1]
+        # return active, total
+        """Give self, (well, TMs really) a chance to transition states"""
+        return [tm.transition() for tm in self.tm]
 
     def settle(self, factor):
         """Reduce the total axial force on the system by moving the sites"""

@@ -43,7 +43,7 @@ class TmSite:
 
     # kwargs that can be used to edit tm_site phenotype
     # tm_site can also accept phenotype profiles
-    VALID_PARAMS = ['tm_coop']
+    VALID_PARAMS = ['tm_coop', 'tm_K1']
 
     def __init__(self, parent_tm, binding_site, index, **tm_params):
         """ A single tropomyosin site, paired to a binding site
@@ -101,6 +101,10 @@ class TmSite:
         if 'tm_coop' in tm_params:
             self._coop = tm_params.pop('tm_coop')
         self.constants['tm_coop'] = self._coop
+
+        if 'tm_K1' in tm_params:
+            self._K1 = tm_params.pop('tm_K1')
+        self.constants['tm_K1'] = self._K1
 
         for param in tm_params.keys():
             print("Unknown tm_param:", param)
@@ -250,7 +254,7 @@ class TmSite:
         coop = self._coop if self.subject_to_cooperativity else 1
         forward *= coop
 
-        # forward = self._k_12 * self.ca * self._coop
+        forward = self._k_12 * self.ca * self._coop
 
         return forward
 
@@ -288,7 +292,7 @@ class TmSite:
         """
         k_13 = self._k_31 / self._K3
         reverse = k_13 * self.ca * self.ca * self._concentrations['free_tm']
-        reverse *= self._r23()
+        # reverse *= self._r23()
 
         return reverse
 
@@ -445,7 +449,7 @@ class Tropomyosin:
     def transition(self):
         """Chunk through all binding sites, transition if need be"""
 
-        """Activation spread method - 1 Anthony's Spreading"""
+        """Activation spread method - 1 Anthony's Activation Spreading"""
         # all_sites = self.sites.copy()
         # remaining_sites = self._roll_for_activation(all_sites)
         # for site in remaining_sites:
@@ -455,13 +459,6 @@ class Tropomyosin:
             site.transition()
         # Spread activation
         self._spread_activation()
-
-        """Reporting """  # TODO remove at some point
-        total = 0
-        for site in self.sites:
-            if site.state == 2:
-                total += 1
-        return total, len(self.sites)
 
     def _roll_for_activation(self, all_sites):
         """"Spread activation along the filament"""
