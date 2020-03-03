@@ -44,7 +44,7 @@ class manage:
             Whether to complete the run without further intervention or treat
             as an interactive session.
         """
-        self.s3 = s3()
+        # self.s3 = s3()
         self.uuid = metafile.split('/')[-1].split('.')[0]
         self.working_dir = self._make_working_dir(self.uuid)
         self.metafile = self._parse_metafile_location(metafile)
@@ -66,7 +66,8 @@ class manage:
     def _parse_metafile_location(self, metafile):
         """Parse the passed location, downloading the metafile if necessary"""
         if not os.path.exists(metafile):
-            return self.s3.pull_from_s3(metafile, self.working_dir)
+            raise FileNotFoundError("meta file not found")
+            # return self.s3.pull_from_s3(metafile, self.working_dir)
         else:
             mfn = '/'+metafile.split('/')[-1]
             return shutil.copyfile(metafile, self.working_dir+mfn)
