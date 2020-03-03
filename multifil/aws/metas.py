@@ -38,7 +38,7 @@ Created by Dave Williams on 2017-03-08
 
 import os
 import uuid
-import ujson as json
+import json as json
 import numpy as np
 
 from .. import hs
@@ -203,13 +203,16 @@ def emit(path_local, path_s3, time,  poisson=0.0, ls=None, z_line=None,
     rund['path_s3'] = path_s3
     rund['poisson_ratio'] = poisson
     rund['lattice_spacing'] = ls
-    rund['z_line'] = z_line
-    rund['actin_permissiveness'] = actin_permissiveness
+    rund['z_line'] = list(z_line)
+    rund['actin_permissiveness'] = list(actin_permissiveness)
     rund['timestep_length'] = np.diff(time)[0]
     rund['timestep_number'] = len(time)
     ## Include kwargs
     for k in kwargs:
-        rund[k] = kwargs[k]
+        if isinstance(kwargs[k], np.ndarray):
+            rund[k] = list(kwargs[k])
+        else:
+            rund[k] = kwargs[k]
     ## Write out the run description
     if write is True:
         output_filename = os.path.join(path_local, name+'.meta.json')

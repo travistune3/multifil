@@ -21,7 +21,7 @@ import os
 import shutil
 import subprocess
 import time
-import ujson as json
+import json as json
 import multiprocessing as mp
 import boto
 import numpy as np
