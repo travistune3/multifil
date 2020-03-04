@@ -158,7 +158,10 @@ class manage:
 
             # Finalize and save files to final locations
             self._log_it("model finished, uploading")
-        finally:
+        finally:    # <- executed normally but also in the event of failure
+            # In the event of general failure or user interrupt,
+            # we need to finalize what we have.
+            # READ: orphaned files in /tmp/ are disallowed now.
             data_final_name = self.datafile.finalize()
             self._copy_file_to_final_location(data_final_name)
             self.datafile.delete()  # clean up temp files
