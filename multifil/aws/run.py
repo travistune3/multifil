@@ -56,8 +56,9 @@ class manage:
         if unattended:
             try:
                 self.run_and_save()
-            except:
+            except Exception as e:
                 mp.current_process().terminate()
+                print(e)
 
     @staticmethod
     def _make_working_dir(name):
@@ -134,15 +135,17 @@ class manage:
                 pass
         # Save to passes local location
         if final_loc is not None:
-            local_loc = os.path.abspath(os.path.expanduser(location)) \
-                        + file_name
-            shutil.copyfile(temp_loc, local_loc)
+            print("filesystem error...")    # AMA 3-4-2020
+            # local_loc = os.path.abspath(os.path.expanduser(location)) \
+            #             + file_name
+            # shutil.copyfile(temp_loc, local_loc)
 
-    def run_and_save(self, confirm_delete=True):
+    def run_and_save(self, use_sarc=True):
         """Complete a run according to the loaded meta configuration and save
         results to meta-specified s3 and local locations"""
         # Initialize data and sarc
-        self.sarcfile = sarc_file(self.sarc, self.meta, self.working_dir)
+        if use_sarc:
+            self.sarcfile = sarc_file(self.sarc, self.meta, self.working_dir)
         self.datafile = data_file(self.sarc, self.meta, self.working_dir)
         # Run away
         np.random.seed()
@@ -152,7 +155,8 @@ class manage:
             for timestep in range(self.meta['timestep_number']):
                 self.sarc.timestep(timestep)
                 self.datafile.append()
-                self.sarcfile.append()
+                if use_sarc:
+                    self.sarcfile.append()
                 # Update on how it is going
                 self._run_status(timestep, tic, 100)
 
@@ -166,9 +170,10 @@ class manage:
             self._copy_file_to_final_location(data_final_name)
             self.datafile.delete()  # clean up temp files
 
-            sarc_final_name = self.sarcfile.finalize()
-            self._copy_file_to_final_location(sarc_final_name)
-            self.sarcfile.delete()  # clean up temp files
+            if use_sarc:
+                sarc_final_name = self.sarcfile.finalize()
+                self._copy_file_to_final_location(sarc_final_name)
+                self.sarcfile.delete()  # clean up temp files
 
             self._copy_file_to_final_location(self.metafile)
             os.remove(self.metafile)

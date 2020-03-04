@@ -396,12 +396,16 @@ class ThinFilament:
         # Tie the nodes on each face into the flat axial locations
         node_index_by_face = np.array([[np.nonzero(axial_flat == l)[0][0]
                                         for l in f] for f in axial_by_face])
+        # V AMA 3-4-2020 V
+        # noinspection PyTypeChecker
         face_index_by_node = np.tile(None, len(axial_flat))
         for face_ind in range(len(node_index_by_face)):
             for node_ind in node_index_by_face[face_ind]:
                 face_index_by_node[node_ind] = face_ind
         # Create binding sites and thin faces
         self.binding_sites = []
+        orientation = None
+        face_binding_sites = None
         for index in range(len(axial_flat)):
             orientation = face_orientations[face_index_by_node[index]]
             self.binding_sites.append(BindingSite(self, index, orientation))
