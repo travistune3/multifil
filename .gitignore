@@ -61,5 +61,6 @@ target/
 aws/test_instance
 multifil.zip
 notes/
+*.ipynb
 
 .DS_Store
