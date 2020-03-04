@@ -8,17 +8,17 @@ MORE ABOUT HOW TITIN WORKS
 Created by Joe Powers and Dave Williams on 2017-02-17
 """
 
+import warnings
 
 import numpy as np
-import warnings
 import numpy.random as random
-random.seed() # Ensure proper seeding
 
 
 class Titin:
     """This is all about the titin filament"""
+
     def __init__(self, parent_lattice, index, thick_face, thin_face,
-        a=240, b=0.0045):
+                 a=240, b=0.0045):
         """Initialize the titin filament.
 
         Parameters:
@@ -30,6 +30,9 @@ class Titin:
         Returns:
             None
         """
+        # noinspection PyArgumentList
+        random.seed()  # Ensure proper seeding
+
         # Name of the titin molecule
         self.index = index
         self.address = ('titin', index)
@@ -43,9 +46,9 @@ class Titin:
         self.thin_face = thin_face
         # Link titin to that face of the thin filament
         self.thin_face.link_titin(self)
-        ## And now we declare titin properties that will be used to
-        ## calculate forces
-        self.rest = 120 #nm, no citation
+        # ## And now we declare titin properties that will be used to
+        # ## calculate forces
+        self.rest = 120  # nm, no citation
         # Create the constants that determine force NOTE IMPROVE DOC
         self.a = a
         self.b = b
@@ -74,7 +77,7 @@ class Titin:
         """
         # Check for index mismatch
         read, current = tuple(td['address']), self.address
-        assert read==current, "index mismatch at %s/%s"%(read, current)
+        assert read == current, "index mismatch at %s/%s" % (read, current)
         # Local keys
         self.a = td['a']
         self.b = td['b']
@@ -89,7 +92,7 @@ class Titin:
         act_loc = self.thin_face.parent_thin.parent_lattice.z_line
         myo_loc = self.thick_face.get_axial_location(-1)
         ls = self.parent_lattice.lattice_spacing
-        angle = np.arctan2(ls, act_loc-myo_loc)
+        angle = np.arctan2(ls, act_loc - myo_loc)
         return angle
 
     def length(self):
@@ -97,7 +100,7 @@ class Titin:
         act_loc = self.thin_face.parent_thin.parent_lattice.z_line
         myo_loc = self.thick_face.get_axial_location(-1)
         ls = self.parent_lattice.lattice_spacing
-        length = np.sqrt( (act_loc-myo_loc)**2 + ls**2 )
+        length = np.sqrt((act_loc - myo_loc) ** 2 + ls ** 2)
         return length
 
     def stiffness(self):
@@ -105,43 +108,43 @@ class Titin:
         force for settling at each timestep. We get this as the derivitive of
         force with respect to x. D[a*exp(b*x), x] = a*b*exp(b*x)
         """
-        return self.force()*self.b
+        return self.force() * self.b
 
     def force(self):
         """Calculate the total force the titin filament exerts"""
         length = self.length()
         if length < self.rest:
-            return 0 # titin buckles
+            return 0  # titin buckles
         else:
-            #Exponential Model
+            # Exponential Model
             x = length - self.rest
-            return self.a*np.exp(self.b*x)
-        #else:
-            #Cubic model
-            #x = length - self.rest
-            #a = 3.25e-5
-            #b = -5e-3
-            #c = 9e-1
-            #d = -7e-5
-            #return a*(x**3) + b*(x**2) + c*x + d #Linke et al. PNAS 1998
-        #else:
-            # Sawtooth Model
-            #extension = length - self.rest
-            #a = 1.2e-6
-            #b = 3
-            #c = 0.5e-6#*random.rand()
-            #d = 34
-            #e = 3
-            #return a*extension**b + c*np.fmod(extension,d)**e
-        #else:
-            #Hookean Model
-            #return self.k * (self.length() - self.rest)
+            return self.a * np.exp(self.b * x)
+        # else:
+        # Cubic model
+        # x = length - self.rest
+        # a = 3.25e-5
+        # b = -5e-3
+        # c = 9e-1
+        # d = -7e-5
+        # return a*(x**3) + b*(x**2) + c*x + d #Linke et al. PNAS 1998
+        # else:
+        # Sawtooth Model
+        # extension = length - self.rest
+        # a = 1.2e-6
+        # b = 3
+        # c = 0.5e-6#*random.rand()
+        # d = 34
+        # e = 3
+        # return a*extension**b + c*np.fmod(extension,d)**e
+        # else:
+        # Hookean Model
+        # return self.k * (self.length() - self.rest)
 
     def axialforce(self):
         """Return the total force the titin filament exerts on the
         thick filament's final node, (negate for the thin filament side)
         """
-        return self.force() * np.cos(self.angle()) ## CHECK_JDP ##
+        return self.force() * np.cos(self.angle())  # ## CHECK_JDP ##
 
     def radialforce(self):
         """Return the force in the radial direction (positive is compressive)
@@ -149,3 +152,11 @@ class Titin:
         """
         warnings.warn("Check radial force direction in titin")
         return self.force() * np.sin(self.angle())
+
+
+def ti_isoform_profile(**kwargs):
+    return {}
+
+
+if __name__ == '__main__':
+    print("ti.py is really meant to be called as a supporting module")

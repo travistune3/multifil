@@ -46,7 +46,7 @@ def log_it(log_message):
 def fatal_error(error_log_message, feed_me = "differently", shutdown=False):
     """Log a message likely to have torpedoed the run"""
     log_it("ERROR: " + error_log_message)
-    log_it("SHUTTING DOWN: feed me " + feed_me + " next time")
+    log_it("SHUTTING DOWN: feed me " + feed_me + " next time_trace")
     if shutdown:
         halt_system()
 

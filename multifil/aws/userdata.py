@@ -5,7 +5,7 @@ userdata_script.py - control an aws instance from a sqs queue
 
 Run this guy on startup as a userdata script and he will connect to
 s3 to download code to a directory, and run commands in it that are
-provided by an SQS queue, one job at a time per core
+provided by an SQS queue, one job at a time_trace per core
 
 Processing as a string template, we replace the following keys with their
 equivalents:
@@ -33,7 +33,7 @@ def log_it(log_message):
 
 def fatal_error(error_log_message, feed_me = "differently"):
     log_it("ERROR: " + error_log_message)
-    log_it("SHUTTING DOWN: feed me " + feed_me + " next time")
+    log_it("SHUTTING DOWN: feed me " + feed_me + " next time_trace")
     #os.system("shutdown now -h")
 
 def try_and_log(command, message):

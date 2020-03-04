@@ -101,7 +101,7 @@ def launch_on_demand_instances(ec2, num_of, userdata,
         max_count          = num_of,
         subnet_id          = SUBNET_IDS['us-east-1a'],
         block_device_map   = get_bdm(ec2))
-    time.sleep(.5) # Give the machines time to register
+    time.sleep(.5) # Give the machines time_trace to register
     nodes = copy.copy(reservation.instances)
     return nodes
 
@@ -125,11 +125,11 @@ def launch_spot_instances(ec2, num_of, userdata, bid=SPOT_BID,
         placement          = availability_zone,
         subnet_id          = SUBNET_IDS[availability_zone],
         block_device_map   = get_bdm(ec2))
-    time.sleep(.5) # Give the machines time to register
+    time.sleep(.5) # Give the machines time_trace to register
     return reservation
 
 def watch_cluster():
-    """Give real-time updates on what is happening aboard our cluster"""
+    """Give real-time_trace updates on what is happening aboard our cluster"""
     #Make it pretty, or pretty trippy
     range_plus =lambda ri,re,s: [str(i)+s for i in range(ri,re)]
     styles = ["\033["+''.join(style) for style in itertools.product(

@@ -6,20 +6,23 @@ hs.py - A half-sarcomere model with multiple thick and thin filaments
 Created by Dave Williams on 2009-12-31.
 """
 
-import sys
-import os
 import multiprocessing as mp
+import sys
 import time
+
 import numpy as np
+
 from . import af
 from . import mf
 from . import ti
 
+
 class hs:
     """The half-sarcomere and ways to manage it"""
+
     def __init__(self, lattice_spacing=None, z_line=None, poisson=None,
-                actin_permissiveness=None, timestep_len=1,
-                time_dependence=None, starts=None):
+                 actin_permissiveness=None, timestep_len=1,
+                 time_dependence=None, starts=None):
         """ Create the data structure that is the half-sarcomere model
 
         Parameters:
@@ -50,7 +53,7 @@ class hs:
         classes representing the other structures therein will use when
         running. It contains the following properties:
 
-        ## Half-sarcomere properties: these are properties that can be
+        # ## Half-sarcomere properties: these are properties that can be
         interpreted as belonging to the overall model, not to any thick or
         thin filament.
 
@@ -64,7 +67,7 @@ class hs:
             x axis location below which actin sites are hidden by actin
             overlap (crossing through the m-line from adjacent half sarc)
 
-        ## Thick Filament Properties: each is a tuple of thick filaments
+        # ## Thick Filament Properties: each is a tuple of thick filaments
         (filament_0, filament_1, filament_2, filament_3) where each
         filament_x is giving the actual properties of that particular
         filament.
@@ -90,7 +93,7 @@ class hs:
             a single value, the spring constant of the thick filament between
             any given pair of crowns
 
-        ## Thin Filament Properties: arranged in the same manner as the
+        # ## Thin Filament Properties: arranged in the same manner as the
         thick filament properties, but for the eight thin filaments
 
         thin_location:
@@ -139,8 +142,8 @@ class hs:
         self.lattice_spacing = lattice_spacing
         self.z_line = z_line
         # Create the thin filaments, unlinked but oriented on creation.
-        thin_orientations = ([4,0,2], [3,5,1], [4,0,2], [3,5,1],
-                [3,5,1], [4,0,2], [3,5,1], [4,0,2])
+        thin_orientations = ([4, 0, 2], [3, 5, 1], [4, 0, 2], [3, 5, 1],
+                             [3, 5, 1], [4, 0, 2], [3, 5, 1], [4, 0, 2])
         np.random.seed()
         if starts is None:
             thin_starts = [np.random.randint(25) for i in thin_orientations]
@@ -183,27 +186,27 @@ class hs:
             thick_starts = starts[1]
         self._thick_starts = thick_starts
         self.thick = (
-                mf.ThickFilament(self, 0, (
-                    self.thin[0].thin_faces[1], self.thin[1].thin_faces[2],
-                    self.thin[2].thin_faces[2], self.thin[6].thin_faces[0],
-                    self.thin[5].thin_faces[0], self.thin[4].thin_faces[1]),
-                    thick_starts[0]),
-                mf.ThickFilament(self, 1, (
-                    self.thin[2].thin_faces[1], self.thin[3].thin_faces[2],
-                    self.thin[0].thin_faces[2], self.thin[4].thin_faces[0],
-                    self.thin[7].thin_faces[0], self.thin[6].thin_faces[1]),
-                    thick_starts[1]),
-                mf.ThickFilament(self, 2, (
-                    self.thin[5].thin_faces[1], self.thin[6].thin_faces[2],
-                    self.thin[7].thin_faces[2], self.thin[3].thin_faces[0],
-                    self.thin[2].thin_faces[0], self.thin[1].thin_faces[1]),
-                    thick_starts[2]),
-                mf.ThickFilament(self, 3, (
-                    self.thin[7].thin_faces[1], self.thin[4].thin_faces[2],
-                    self.thin[5].thin_faces[2], self.thin[1].thin_faces[0],
-                    self.thin[0].thin_faces[0], self.thin[3].thin_faces[1]),
-                    thick_starts[3])
-                )
+            mf.ThickFilament(self, 0, (
+                self.thin[0].thin_faces[1], self.thin[1].thin_faces[2],
+                self.thin[2].thin_faces[2], self.thin[6].thin_faces[0],
+                self.thin[5].thin_faces[0], self.thin[4].thin_faces[1]),
+                             thick_starts[0]),
+            mf.ThickFilament(self, 1, (
+                self.thin[2].thin_faces[1], self.thin[3].thin_faces[2],
+                self.thin[0].thin_faces[2], self.thin[4].thin_faces[0],
+                self.thin[7].thin_faces[0], self.thin[6].thin_faces[1]),
+                             thick_starts[1]),
+            mf.ThickFilament(self, 2, (
+                self.thin[5].thin_faces[1], self.thin[6].thin_faces[2],
+                self.thin[7].thin_faces[2], self.thin[3].thin_faces[0],
+                self.thin[2].thin_faces[0], self.thin[1].thin_faces[1]),
+                             thick_starts[2]),
+            mf.ThickFilament(self, 3, (
+                self.thin[7].thin_faces[1], self.thin[4].thin_faces[2],
+                self.thin[5].thin_faces[2], self.thin[1].thin_faces[0],
+                self.thin[0].thin_faces[0], self.thin[3].thin_faces[1]),
+                             thick_starts[3])
+        )
         # Now the thin filaments need to be linked to thick filaments, use
         # the face orders from above and the following arrangement:
         # ----------------------------
@@ -220,28 +223,28 @@ class hs:
         # The following may be hard to read, but it has been checked and
         # may be moderately trusted. CDW-20100406
         self.thin[0].set_thick_faces((self.thick[3].thick_faces[4],
-            self.thick[0].thick_faces[0], self.thick[1].thick_faces[2]))
+                                      self.thick[0].thick_faces[0], self.thick[1].thick_faces[2]))
         self.thin[1].set_thick_faces((self.thick[3].thick_faces[3],
-            self.thick[2].thick_faces[5], self.thick[0].thick_faces[1]))
+                                      self.thick[2].thick_faces[5], self.thick[0].thick_faces[1]))
         self.thin[2].set_thick_faces((self.thick[2].thick_faces[4],
-            self.thick[1].thick_faces[0], self.thick[0].thick_faces[2]))
+                                      self.thick[1].thick_faces[0], self.thick[0].thick_faces[2]))
         self.thin[3].set_thick_faces((self.thick[2].thick_faces[3],
-            self.thick[3].thick_faces[5], self.thick[1].thick_faces[1]))
+                                      self.thick[3].thick_faces[5], self.thick[1].thick_faces[1]))
         self.thin[4].set_thick_faces((self.thick[1].thick_faces[3],
-            self.thick[0].thick_faces[5], self.thick[3].thick_faces[1]))
+                                      self.thick[0].thick_faces[5], self.thick[3].thick_faces[1]))
         self.thin[5].set_thick_faces((self.thick[0].thick_faces[4],
-            self.thick[2].thick_faces[0], self.thick[3].thick_faces[2]))
+                                      self.thick[2].thick_faces[0], self.thick[3].thick_faces[2]))
         self.thin[6].set_thick_faces((self.thick[0].thick_faces[3],
-            self.thick[1].thick_faces[5], self.thick[2].thick_faces[1]))
+                                      self.thick[1].thick_faces[5], self.thick[2].thick_faces[1]))
         self.thin[7].set_thick_faces((self.thick[1].thick_faces[4],
-            self.thick[3].thick_faces[0], self.thick[2].thick_faces[2]))
+                                      self.thick[3].thick_faces[0], self.thick[2].thick_faces[2]))
         # Set the timestep for all our new cross-bridges
         self.timestep_len = timestep_len
         # Set actin_permissiveness for all our new binding sites
         if time_dependence is not None:
             if 'actin_permissiveness' in time_dependence:
                 actin_permissiveness = \
-                        time_dependence['actin_permissiveness'][0]
+                    time_dependence['actin_permissiveness'][0]
         if actin_permissiveness is None:
             actin_permissiveness = 1.0
         self.actin_permissiveness = actin_permissiveness
@@ -268,7 +271,7 @@ class hs:
         # |                                                  |
         # |                   a2                a0           |
         # |--------------------------------------------------|
-        ## CHECK_JDP ## Link Thick filament to titin
+        # ## CHECK_JDP # ## Link Thick filament to titin
         ti_thick = lambda i, j: self.thick[i].thick_faces[j]
         ti_thin = lambda i, j: self.thin[i].thin_faces[j]
         self.titin = (
@@ -306,7 +309,7 @@ class hs:
         Current output includes:
             version: version of the sarcomere model
             timestep_len: the length of the timestep in ms
-            current_timestep: time to get a watch
+            current_timestep: time_trace to get a watch
             lattice_spacing: the thick to thin distance
             z_line: the z_line location
             hiding_line: where binding sites become unavailable due to overlap
@@ -317,7 +320,7 @@ class hs:
             thick: the structures for the thick filaments
             thin: the structures for the thin filaments
         """
-        sd = self.__dict__.copy() # sarc dict
+        sd = self.__dict__.copy()  # sarc dict
         sd['current_timestep'] = self.current_timestep
         # set act_perm as mean since prop access returns values at every point
         sd['actin_permissiveness'] = np.mean(self.actin_permissiveness)
@@ -335,7 +338,7 @@ class hs:
         if read != current:
             import warnings
             warnings.warn("Versioning mismatch, reading %0.1f into %0.1f."
-                          %(read, current))
+                          % (read, current))
         # Get filaments in right orientations
         self.__init__(
             lattice_spacing=sd['_initial_lattice_spacing'],
@@ -345,7 +348,7 @@ class hs:
             timestep_len=sd['timestep_len'],
             time_dependence=sd['time_dependence'],
             starts=(sd['_thin_starts'], sd['_thick_starts'])
-            )
+        )
         # Local keys
         self.current_timestep = sd['current_timestep']
         self._z_line = sd['_z_line']
@@ -365,8 +368,8 @@ class hs:
         """Run the model for the specified number of timesteps
 
         Parameters:
-            time_steps: number of time steps to run the model for (100)
-            callback: function to be executed after each time step to
+            time_steps: number of time_trace steps to run the model for (100)
+            callback: function to be executed after each time_trace step to
                 collect data. The callback function takes the sarcomere
                 in its current state as its only argument. (Defaults to
                 the axial force at the M-line if not specified.)
@@ -381,7 +384,7 @@ class hs:
         # Callback defaults to the axial force at the M-line
         if callback is None:
             callback = lambda sarc: sarc.axialforce()
-        # Create a place to store callback information and note the time
+        # Create a place to store callback information and note the time_trace
         output = []
         tic = time.time()
         # Run through each timestep
@@ -389,22 +392,22 @@ class hs:
             self.timestep()
             output.append(callback(self))
             # Update us on how it went
-            toc = int((time.time()-tic) / (i+1) * (time_steps-i-1))
+            toc = int((time.time() - tic) / (i + 1) * (time_steps - i - 1))
             proc_name = mp.current_process().name
             if bar == True:
                 sys.stdout.write("\n" + proc_name +
-                    " finished timestep %i of %i, %ih%im%is left"\
-                    %(i+1, time_steps, toc/60/60, toc/60%60, toc%60))
+                                 " finished timestep %i of %i, %ih%im%is left" \
+                                 % (i + 1, time_steps, toc / 60 / 60, toc / 60 % 60, toc % 60))
                 sys.stdout.flush()
-            elif type(bar) == type(lambda x:x):
-                bar(i, time_steps, toc, time.time()-tic, proc_name)
+            elif type(bar) == type(lambda x: x):
+                bar(i, time_steps, toc, time.time() - tic, proc_name)
         return output
 
     def timestep(self, current=None):
-        """Move the model one step forward in time, allowing the
+        """Move the model one step forward in time_trace, allowing the
         myosin heads a chance to bind and then balancing forces
         """
-        # Record our passage through time
+        # Record our passage through time_trace
         if current is not None:
             self.current_timestep = current
         else:
@@ -454,7 +457,7 @@ class hs:
 
     @z_line.setter
     def z_line(self, new_z_line):
-        """Set a new z-line, updating the lattice spacing at the same time"""
+        """Set a new z-line, updating the lattice spacing at the same time_trace"""
         self._z_line = new_z_line
         self.update_ls_from_poisson_ratio()
 
@@ -497,7 +500,7 @@ class hs:
             d10: d10 spacing in nm
         """
         filcenter_dist = face_dist + 0.5 * 9 + 0.5 * 16
-        d10 = 1.5* filcenter_dist
+        d10 = 1.5 * filcenter_dist
         return d10
 
     @staticmethod
@@ -512,7 +515,7 @@ class hs:
         Returns:
             face_dist: face to face lattice spacing in nm
         """
-        filcenter_dist = d10 * 2/3
+        filcenter_dist = d10 * 2 / 3
         face_dist = filcenter_dist - 0.5 * 9 - 0.5 * 16
         return face_dist
 
@@ -526,8 +529,8 @@ class hs:
 
     def radialforce(self):
         """The sum of the thick filaments' radial forces, as a (y,z) vector"""
-        return np.sum([t.radial_force_of_filament() for t in self.thick], 0)# + ...
-        #sum([titin.radialforce() for titin in self.titin]) #CHECK
+        return np.sum([t.radial_force_of_filament() for t in self.thick], 0)  # + ...
+        # sum([titin.radialforce() for titin in self.titin]) #CHECK
 
     def _single_settle(self, factor=0.95):
         """Settle down now, just a little bit"""
@@ -542,9 +545,9 @@ class hs:
         result in a deformation that produces more axial force than the
         convergence value, 0.12pN.
         """
-        converge_limit=0.12 # see doc string
+        converge_limit = 0.12  # see doc string
         converge = self._single_settle()
-        while converge>converge_limit:
+        while converge > converge_limit:
             converge = self._single_settle()
 
     def _get_residual(self):
@@ -557,9 +560,9 @@ class hs:
     def length_perturbation(self, dist=None, n=None):
         """Get the force response of the half-sarcomere to a length perturbation"""
         if dist is None:
-            dist = 0.2; #take length perturbation steps of 'dist' nm
+            dist = 0.2;  # take length perturbation steps of 'dist' nm
         if n is None:
-            n = 10; #take 'n' length perturbation steps.
+            n = 10;  # take 'n' length perturbation steps.
         response = [];
         stiffness = [];
         initial_force = self.axialforce()
@@ -567,8 +570,8 @@ class hs:
         for i in range(n):
             self.z_line += dist
             self.settle()
-            response.append(((i+1) * dist, self.axialforce() - initial_force))
-            stiffness.append((self.axialforce() - initial_force) / ((i+1) * dist))
+            response.append(((i + 1) * dist, self.axialforce() - initial_force))
+            stiffness.append((self.axialforce() - initial_force) / ((i + 1) * dist))
         self.z_line = initial_zline
         self.settle()
         return np.mean(stiffness)
@@ -578,13 +581,13 @@ class hs:
         nested = [t.get_states() for t in self.thick]
         xb_states = [xb for fil in nested for face in fil for xb in face]
         num_in_state = [xb_states.count(state) for state in range(3)]
-        frac_in_state = [n/float(len(xb_states)) for n in num_in_state]
+        frac_in_state = [n / float(len(xb_states)) for n in num_in_state]
         return frac_in_state
 
-    #ADDED BY JDP ON 2017-Aug-21
+    # ADDED BY JDP ON 2017-Aug-21
     def get_31_trans(self):
         """Calculate the number of xb's that transition from state 3 to 1"""
-        xb_trans = sum(sum(self.last_transitions,[]),[])
+        xb_trans = sum(sum(self.last_transitions, []), [])
         return xb_trans.count('31')
 
     def update_ls_from_poisson_ratio(self):
@@ -617,12 +620,12 @@ class hs:
         Returns:
             None
         """
-        beta =  0.5 * (9 + 16)
+        beta = 0.5 * (9 + 16)
         ls_0 = self._initial_lattice_spacing
         z_0 = self._initial_z_line
         nu = self.poisson_ratio
         dz = self.z_line - z_0
-        ls = (ls_0 + beta) * (z_0/(z_0 + dz))**nu - beta
+        ls = (ls_0 + beta) * (z_0 / (z_0 + dz)) ** nu - beta
         self.lattice_spacing = ls
         return
 
@@ -657,7 +660,7 @@ class hs:
         elif address[0] == 'titin':
             return self.titin[address[1]]
         import warnings
-        warnings.warn("Unresolvable address: %s"%str(address))
+        warnings.warn("Unresolvable address: %s" % str(address))
 
     def display_axial_force_end(self):
         """ Show an end view with axial forces of face pairs
@@ -670,11 +673,11 @@ class hs:
         # Note: The display requires the form:
         #  [[M0_A0, M0_A1, ..., M0_A5], ..., [M3_A0, ..., M3_A5]]
         forces = [[face.axialforce() for face in thick.thick_faces]
-                    for thick in self.thick]
+                  for thick in self.thick]
         # Display the forces
         self.display_ends(forces, "Axial force of face pairs", True)
 
-    def display_state_end(self, states=[1,2]):
+    def display_state_end(self, states=[1, 2]):
         """ Show an end view of the current state of the cross-bridges
 
         Parameters:
@@ -693,7 +696,7 @@ class hs:
         #  [[M0_A0, M0_A1, ..., M0_A5], ..., [M3_A0, ..., M3_A5]]
         state_count = []
         for thick in self.thick:
-            state_count.append([]) # Append list for this thick filament
+            state_count.append([])  # Append list for this thick filament
             for face in thick.thick_faces:
                 crossbridges = face.get_xb()
                 # Retrieve states
@@ -705,7 +708,7 @@ class hs:
         self.display_ends(state_count, ("Cross-bridge count in state(s) "
                                         + str(states)), False)
 
-    def display_state_side(self, states=[1,2]):
+    def display_state_side(self, states=[1, 2]):
         """ Show a side view of the current state of the cross-bridges
 
         Parameters:
@@ -723,7 +726,7 @@ class hs:
         # Note: The display requires the form:
         # [[A0_0,... A0_N], [M0A0_0,... M0A0_N], ...
         #  [M0A1_0,... M0A1_N], [A1_0,... A1_N]]
-        azo = lambda x: 0 if (x is None) else 1 # Actin limited to zero, one
+        azo = lambda x: 0 if (x is None) else 1  # Actin limited to zero, one
         oddeven = 0
         vals = []
         for thick in self.thick:
@@ -801,40 +804,40 @@ class hs:
             r = right_float
         # Print the title, or not
         if title is not None:
-            print("  +" + title.center(53,"-") + "+")
+            print("  +" + title.center(53, "-") + "+")
         else:
-            print("  +" + 53*"-" + "+")
+            print("  +" + 53 * "-" + "+")
         # Print the rest
-        v = graph_values # Shorthand
+        v = graph_values  # Shorthand
         print(
-        "  |           [AA]              [AA]                    |\n" +
-        "  |                                                     |\n" +
-        "  |  [AA]     %s     [AA]     %s     [AA]           |\n"
-         % (l(v[0][1]), l(v[1][1])) +
-        "  |                                                     |\n" +
-        "  |      %s      %s    %s      %s               |\n"
-         % (l(v[0][0]), r(v[0][2]), l(v[1][0]), r(v[1][2])) +
-        "  |           (MM)              (MM)                    |\n" +
-        "  |      %s      %s    %s      %s               |\n"
-         % (l(v[0][5]), r(v[0][3]), l(v[1][5]), r(v[1][3])) +
-        "  |                                                     |\n" +
-        "  |  [AA]     %s     [AA]     %s     [AA]           |\n"
-         % (l(v[0][4]), l(v[1][4])) +
-        "  |                                                     |\n" +
-        "  |           [AA]     %s     [AA]     %s     [AA]  |\n"
-         % (l(v[2][1]), l(v[3][1])) +
-        "  |                                                     |\n" +
-        "  |               %s      %s    %s      %s      |\n"
-         % (l(v[2][0]), r(v[2][2]), l(v[3][0]), r(v[3][2])) +
-        "  |                    (MM)              (MM)           |\n" +
-        "  |               %s      %s    %s      %s      |\n"
-         % (l(v[2][5]), r(v[2][3]), l(v[3][5]), r(v[3][3])) +
-        "  |                                                     |\n" +
-        "  |           [AA]     %s     [AA]     %s     [AA]  |\n"
-         % (l(v[2][4]), l(v[3][4])) +
-        "  |                                                     |\n" +
-        "  |                    [AA]              [AA]           |\n" +
-        "  +-----------------------------------------------------+")
+            "  |           [AA]              [AA]                    |\n" +
+            "  |                                                     |\n" +
+            "  |  [AA]     %s     [AA]     %s     [AA]           |\n"
+            % (l(v[0][1]), l(v[1][1])) +
+            "  |                                                     |\n" +
+            "  |      %s      %s    %s      %s               |\n"
+            % (l(v[0][0]), r(v[0][2]), l(v[1][0]), r(v[1][2])) +
+            "  |           (MM)              (MM)                    |\n" +
+            "  |      %s      %s    %s      %s               |\n"
+            % (l(v[0][5]), r(v[0][3]), l(v[1][5]), r(v[1][3])) +
+            "  |                                                     |\n" +
+            "  |  [AA]     %s     [AA]     %s     [AA]           |\n"
+            % (l(v[0][4]), l(v[1][4])) +
+            "  |                                                     |\n" +
+            "  |           [AA]     %s     [AA]     %s     [AA]  |\n"
+            % (l(v[2][1]), l(v[3][1])) +
+            "  |                                                     |\n" +
+            "  |               %s      %s    %s      %s      |\n"
+            % (l(v[2][0]), r(v[2][2]), l(v[3][0]), r(v[3][2])) +
+            "  |                    (MM)              (MM)           |\n" +
+            "  |               %s      %s    %s      %s      |\n"
+            % (l(v[2][5]), r(v[2][3]), l(v[3][5]), r(v[3][3])) +
+            "  |                                                     |\n" +
+            "  |           [AA]     %s     [AA]     %s     [AA]  |\n"
+            % (l(v[2][4]), l(v[3][4])) +
+            "  |                                                     |\n" +
+            "  |                    [AA]              [AA]           |\n" +
+            "  +-----------------------------------------------------+")
         return
 
     def display_side(self, graph_values, ends=(0, 0, 0), title=None,
@@ -897,72 +900,72 @@ class hs:
         br = lambda x: "%3i" % filter_zeros(int(x))
         # Print the title, if any
         if title is not None:
-            print("  +" + title.center(134,"-") + "+----+")
+            print("  +" + title.center(134, "-") + "+----+")
         else:
-            print("  +" + 134*"-" + "+----+")
+            print("  +" + 134 * "-" + "+----+")
         # Print the rest
         vals = [[bl(ends[0])] + list(map(l, graph_values[0])),
                 list(map(l, graph_values[1])) + [br(ends[1])],
                 list(map(l, graph_values[2])),
-                [bl(ends[2])] + list(map(l, graph_values[3]))] # Shorthand
+                [bl(ends[2])] + list(map(l, graph_values[3]))]  # Shorthand
         print(
-        "  | Z-disk                                                                                                                               |    |\n" +
-        "  | ||----*--*--*--*--*--*--*--*--*--*--*--*--*--*--*--*--*--*--*--*--*--*--*--*--*--*--*--*--*--*                                       | %s |\n"
+            "  | Z-disk                                                                                                                               |    |\n" +
+            "  | ||----*--*--*--*--*--*--*--*--*--*--*--*--*--*--*--*--*--*--*--*--*--*--*--*--*--*--*--*--*--*                                       | %s |\n"
             % labels[0] +
-        "  | %s   %s %s %s %s %s %s %s %s %s %s %s %s %s %s %s %s %s %s %s %s %s %s %s %s %s %s %s %s %s %s                                      |    |\n"
+            "  | %s   %s %s %s %s %s %s %s %s %s %s %s %s %s %s %s %s %s %s %s %s %s %s %s %s %s %s %s %s %s %s                                      |    |\n"
             % tuple(vals[0]) +
-        "  |                                                                                                                                      |    |\n" +
-        "  |      %s %s %s %s %s %s %s %s %s %s %s %s %s %s %s %s %s %s %s %s %s %s %s %s %s %s %s %s %s %s %s %s %s %s %s %s %s %s %s %s    %s  |    |\n"
+            "  |                                                                                                                                      |    |\n" +
+            "  |      %s %s %s %s %s %s %s %s %s %s %s %s %s %s %s %s %s %s %s %s %s %s %s %s %s %s %s %s %s %s %s %s %s %s %s %s %s %s %s %s    %s  |    |\n"
             % tuple(vals[1]) +
-        "  |      #==#==#==#==#==#==#==#==#==#==#==#==#==#==#==#==#==#==#==#==#==#==#==#==#==#==#==#==#==#==#==#==#==#==#==#==#==#==#==#======||  | %s |\n"
+            "  |      #==#==#==#==#==#==#==#==#==#==#==#==#==#==#==#==#==#==#==#==#==#==#==#==#==#==#==#==#==#==#==#==#==#==#==#==#==#==#==#======||  | %s |\n"
             % labels[1] +
-        "  |      %s %s %s %s %s %s %s %s %s %s %s %s %s %s %s %s %s %s %s %s %s %s %s %s %s %s %s %s %s %s %s %s %s %s %s %s %s %s %s %s  M-line |    |\n"
+            "  |      %s %s %s %s %s %s %s %s %s %s %s %s %s %s %s %s %s %s %s %s %s %s %s %s %s %s %s %s %s %s %s %s %s %s %s %s %s %s %s %s  M-line |    |\n"
             % tuple(vals[2]) +
-        "  |                                                                                                                                      |    |\n" +
-        "  | %s   %s %s %s %s %s %s %s %s %s %s %s %s %s %s %s %s %s %s %s %s %s %s %s %s %s %s %s %s %s %s                                      |    |\n"
+            "  |                                                                                                                                      |    |\n" +
+            "  | %s   %s %s %s %s %s %s %s %s %s %s %s %s %s %s %s %s %s %s %s %s %s %s %s %s %s %s %s %s %s %s                                      |    |\n"
             % tuple(vals[3]) +
-        "  | ||----*--*--*--*--*--*--*--*--*--*--*--*--*--*--*--*--*--*--*--*--*--*--*--*--*--*--*--*--*--*                                       | %s |\n"
+            "  | ||----*--*--*--*--*--*--*--*--*--*--*--*--*--*--*--*--*--*--*--*--*--*--*--*--*--*--*--*--*--*                                       | %s |\n"
             % labels[2] +
-        "  | Z-disk                                                                                                                               |    |\n" +
-        "  +--------------------------------------------------------------------------------------------------------------------------------------+----+\n"
+            "  | Z-disk                                                                                                                               |    |\n" +
+            "  +--------------------------------------------------------------------------------------------------------------------------------------+----+\n"
         )
-        #+-----------------------------------------------------------+----+
-        #| Z-disk                                                    |    |
-        #| ||----*--*--*--*--*--*--*--*--*--*--*--*--*--*--*--...    | A0 |
-        #| 000   00 00 00 00 00 00 00 00 00 00 00 00 00 00 00        |    |
-        #|                                                           |    |
-        #|      00 00 00 00 00 00 00 00 00 00 00 00 00 00 00         |    |
-        #|      #==#==#==#==#==#==#==#==#==#==#==#==#==#==#==...     | M0 |
-        #|      00 00 00 00 00 00 00 00 00 00 00 00 00 00 00         |    |
-        #|                                                           |    |
-        #| 000   00 00 00 00 00 00 00 00 00 00 00 00 00 00 00        |    |
-        #| ||----*--*--*--*--*--*--*--*--*--*--*--*--*--*--*--...    | A1 |
-        #| Z-disk                                                    |    |
-        #+-----------------------------------------------------------+----+
-        #|                                                           |    |
-        #|  ...--*--*--*--*--*--*--*--*--*--*--*--*--*--*--*         | A0 |
-        #|       00 00 00 00 00 00 00 00 00 00 00 00 00 00 00        |    |
-        #|                                                           |    |
-        #|      00 00 00 00 00 00 00 00 00 00 00 00 00 00 00         |    |
-        #|  ...=#==#==#==#==#==#==#==#==#==#==#==#==#==#==#==...     | M0 |
-        #|      00 00 00 00 00 00 00 00 00 00 00 00 00 00 00         |    |
-        #|                                                           |    |
-        #|       00 00 00 00 00 00 00 00 00 00 00 00 00 00 00        |    |
-        #|  ...--*--*--*--*--*--*--*--*--*--*--*--*--*--*--*         | A1 |
-        #|                                                           |    |
-        #+-----------------------------------------------------------+----+
-        #|                                                           |    |
-        #|                                                           | A0 |
-        #|                                                           |    |
-        #|                                                           |    |
-        #|      00 00 00 00 00 00 00 00 00 00  000                   |    |
-        #|  ...=#==#==#==#==#==#==#==#==#==#======||                 | M0 |
-        #|      00 00 00 00 00 00 00 00 00 00  M-line                |    |
-        #|                                                           |    |
-        #|                                                           |    |
-        #|                                                           | A1 |
-        #|                                                           |    |
-        #+-----------------------------------------------------------+----+
+        # +-----------------------------------------------------------+----+
+        # | Z-disk                                                    |    |
+        # | ||----*--*--*--*--*--*--*--*--*--*--*--*--*--*--*--...    | A0 |
+        # | 000   00 00 00 00 00 00 00 00 00 00 00 00 00 00 00        |    |
+        # |                                                           |    |
+        # |      00 00 00 00 00 00 00 00 00 00 00 00 00 00 00         |    |
+        # |      #==#==#==#==#==#==#==#==#==#==#==#==#==#==#==...     | M0 |
+        # |      00 00 00 00 00 00 00 00 00 00 00 00 00 00 00         |    |
+        # |                                                           |    |
+        # | 000   00 00 00 00 00 00 00 00 00 00 00 00 00 00 00        |    |
+        # | ||----*--*--*--*--*--*--*--*--*--*--*--*--*--*--*--...    | A1 |
+        # | Z-disk                                                    |    |
+        # +-----------------------------------------------------------+----+
+        # |                                                           |    |
+        # |  ...--*--*--*--*--*--*--*--*--*--*--*--*--*--*--*         | A0 |
+        # |       00 00 00 00 00 00 00 00 00 00 00 00 00 00 00        |    |
+        # |                                                           |    |
+        # |      00 00 00 00 00 00 00 00 00 00 00 00 00 00 00         |    |
+        # |  ...=#==#==#==#==#==#==#==#==#==#==#==#==#==#==#==...     | M0 |
+        # |      00 00 00 00 00 00 00 00 00 00 00 00 00 00 00         |    |
+        # |                                                           |    |
+        # |       00 00 00 00 00 00 00 00 00 00 00 00 00 00 00        |    |
+        # |  ...--*--*--*--*--*--*--*--*--*--*--*--*--*--*--*         | A1 |
+        # |                                                           |    |
+        # +-----------------------------------------------------------+----+
+        # |                                                           |    |
+        # |                                                           | A0 |
+        # |                                                           |    |
+        # |                                                           |    |
+        # |      00 00 00 00 00 00 00 00 00 00  000                   |    |
+        # |  ...=#==#==#==#==#==#==#==#==#==#======||                 | M0 |
+        # |      00 00 00 00 00 00 00 00 00 00  M-line                |    |
+        # |                                                           |    |
+        # |                                                           |    |
+        # |                                                           | A1 |
+        # |                                                           |    |
+        # +-----------------------------------------------------------+----+
         #
         #
         return
