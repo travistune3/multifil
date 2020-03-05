@@ -353,8 +353,8 @@ class Head:
         adp = 30 * 10 ** -6
         phos = 3 * 10 ** -3
         deltaG = abs(-g_atp - log(atp / (adp * phos)))
-        self.alphaDG = 0.28 * -deltaG
-        self.etaDG = 0.68 * -deltaG
+        self.alphaDG = 0.28 * -deltaG   # weak state efficiency: 0.28
+        self.etaDG = 0.68 * -deltaG     # strong state efficiency: 0.68
         # The time_trace-step, master of all time_trace
         self._timestep = 1  # ms
 
@@ -617,7 +617,7 @@ class Crossbridge(Head):
 
     # kwargs that can be used to edit crossbridge phenotype
     # crossbridge can also accept phenotype profiles
-    VALID_PARAMS = ['mh_c_ks', 'mh_c_kw']
+    VALID_PARAMS = ['mh_c_ks', 'mh_c_kw', 'mh_c_rs', 'mh_c_rw', 'mh_g_ks', 'mh_g_kw', 'mh_g_rs', 'mh_g_rw']
 
     def __init__(self, index, parent_face, thin_face, **mh_params):
         """Set up the cross-bridge
@@ -661,17 +661,72 @@ class Crossbridge(Head):
 
         self.constants = {}
 
-        if 'mh_c_ks' in mh_params:
-            self.c.k_s = mh_params.pop('mh_c_ks')
-        self.constants['mh_c_ks'] = self.c.k_s
-
-        if 'mh_c_kw' in mh_params:
-            self.c.k_w = mh_params.pop('mh_c_kw')
-        self.constants['mh_c_kw'] = self.c.k_w
+        self._process_params(mh_params)
 
         # Print kwargs not digested
         for key in mh_params.keys():
             print("Unknown mh_param:", key)
+
+    def _process_params(self, mh_params):
+        """converter definitions"""
+
+        # converter k_strong_state
+        key = 'mh_c_ks'
+        if key in mh_params.keys():
+            self.c.k_s = mh_params.pop(key)
+        self.constants[key] = self.c.k_s
+        key = None
+
+        # converter k_weak_state
+        key = 'mh_c_kw'
+        if key in mh_params.keys():
+            self.c.k_w = mh_params.pop(key)
+        self.constants[key] = self.c.k_w
+        key = None
+
+        # converter rest_weak_state
+        key = 'mh_c_rw'
+        if key in mh_params.keys():
+            self.c.r_w = mh_params.pop(key)
+        self.constants[key] = self.c.r_w
+        key = None
+
+        # converter rest_strong_state
+        key = 'mh_c_rs'
+        if key in mh_params.keys():
+            self.c.r_s = mh_params.pop(key)
+        self.constants[key] = self.c.r_s
+        key = None
+
+        """globular definitions"""
+
+        # globular k_strong_state
+        key = 'mh_g_ks'
+        if key in mh_params.keys():
+            self.g.k_s = mh_params.pop(key)
+        self.constants[key] = self.g.k_s
+        key = None
+
+        # globular k_weak_state
+        key = 'mh_g_kw'
+        if key in mh_params.keys():
+            self.g.k_w = mh_params.pop(key)
+        self.constants[key] = self.g.k_w
+        key = None
+
+        # globular rest_weak_state
+        key = 'mh_g_rw'
+        if key in mh_params.keys():
+            self.g.r_w = mh_params.pop(key)
+        self.constants[key] = self.g.r_w
+        key = None
+
+        # globular rest_strong_state
+        key = 'mh_g_rs'
+        if key in mh_params.keys():
+            self.g.r_s = mh_params.pop(key)
+        self.constants[key] = self.g.r_s
+        key = None
 
     def __str__(self):
         """String representation of the cross-bridge"""
