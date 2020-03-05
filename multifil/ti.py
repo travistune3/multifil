@@ -16,9 +16,10 @@ import numpy.random as random
 
 class Titin:
     """This is all about the titin filament"""
+    VALID_PARAMS = ['ti_a', 'ti_b']
+    # TODO titin will eventually be also accept phenotype profiles
 
-    def __init__(self, parent_lattice, index, thick_face, thin_face,
-                 a=240, b=0.0045):
+    def __init__(self, parent_lattice, index, thick_face, thin_face, **ti_params):
         """Initialize the titin filament.
 
         Parameters:
@@ -49,9 +50,26 @@ class Titin:
         # ## And now we declare titin properties that will be used to
         # ## calculate forces
         self.rest = 120  # nm, no citation
-        # Create the constants that determine force NOTE IMPROVE DOC
-        self.a = a
-        self.b = b
+        # Create the constants that determine force
+        self.a = 240
+        self.b = 0.0045
+
+        """Handle key-worded ti_params - overriding set values"""
+        self.constants = {}     # Record variables that could be changed here
+
+        # Titin constant a
+        if "ti_a" in ti_params.keys():
+            self.a = ti_params.pop("ti_a")
+        self.constants['ti_a'] = self.a
+
+        # Titin constant b
+        if "ti_b" in ti_params.keys():
+            self.b = ti_params.pop("ti_b")
+        self.constants['ti_b'] = self.b
+
+        # Print kwargs not digested
+        for key in ti_params.keys():
+            print("Unknown ti_param:", key)
 
     def to_dict(self):
         """Create a JSON compatible representation of titin
@@ -152,10 +170,6 @@ class Titin:
         """
         warnings.warn("Check radial force direction in titin")
         return self.force() * np.sin(self.angle())
-
-
-def ti_isoform_profile(**kwargs):
-    return {}
 
 
 if __name__ == '__main__':

@@ -87,9 +87,9 @@ class Spring:
             energy: the energy required to achieve the given value
         """
         if state in ("free", "loose"):
-            return (0.5 * self.k_w * m.pow((spring_val - self.r_w), 2))
+            return 0.5 * self.k_w * m.pow((spring_val - self.r_w), 2)
         elif state == "tight":
-            return (0.5 * self.k_s * m.pow((spring_val - self.r_s), 2))
+            return 0.5 * self.k_s * m.pow((spring_val - self.r_s), 2)
         else:
             warnings.warn("Improper value for spring state")
 
@@ -101,7 +101,7 @@ class Spring:
             nothing: assumes the spring to be in the unbound state
         Returns:
             spring_value: the length or angle of the spring after diffusion"""
-        return (random.normal(self.r_w, self.stand_dev))
+        return random.normal(self.r_w, self.stand_dev)
 
 
 """This python class is no longer used, kept around for equations and line count"""  # class SingleSpringHead:
@@ -439,7 +439,7 @@ class Head:
             state: kinetic state of the cross-bridge, ['free'|'loose'|'tight']
         Returns:
             xb_energy: the energy stored in the cross-bridge"""
-        if state == None:
+        if state is None:
             state = self.state
         (ang, dist) = self._seg_values(tip_location)
         xb_energy = self.c.energy(ang, state) + self.g.energy(dist, state)
@@ -574,7 +574,12 @@ class Head:
         # # ## Based on the energy in the tight state
         # loose_energy = self.energy(bs, "loose")
         tight_energy = self.energy(bs, "tight")
+        # noinspection PyUnusedLocal
         rate = m.sqrt(0.01 * tight_energy) + 0.02
+
+        rate = 112      # per s
+        rate *= 1e-3    # per ms
+
         return float(rate)
 
     def _free_energy(self, tip_location, state):
@@ -604,13 +609,17 @@ class Head:
         """
         c_ang = m.atan2(tip_location[1], tip_location[0])
         g_len = m.hypot(tip_location[1], tip_location[0])
-        return (c_ang, g_len)
+        return c_ang, g_len
 
 
 class Crossbridge(Head):
     """A cross-bridge, including status of links to actin sites"""
 
-    def __init__(self, index, parent_face, thin_face):
+    # kwargs that can be used to edit crossbridge phenotype
+    # crossbridge can also accept phenotype profiles
+    VALID_PARAMS = ['mh_c_ks', 'mh_c_kw']
+
+    def __init__(self, index, parent_face, thin_face, **mh_params):
         """Set up the cross-bridge
 
         Parameters:
@@ -635,6 +644,34 @@ class Crossbridge(Head):
                         self.parent_face.index, self.index)
         # Remember if thou art bound unto an actin
         self.bound_to = None  # None if unbound, BindingSite object otherwise
+
+        """Handle mh_params"""
+        # ## Handle mh_isomer calculations
+        if 'mh_iso' in mh_params.keys():  # !!! This means we don't actually have settings to pass yet !!!
+            mh_params = mh_params.pop('mh_iso')
+            cum_sum = 0
+            rolled_val = random.random()
+            keys = list(mh_params.keys())
+            k_i = 0
+            while cum_sum < rolled_val:
+                probability = float(keys[k_i]) / 100.0
+                cum_sum += probability
+                k_i += 1
+            mh_params = mh_params[keys[k_i - 1]].copy()  # Note that we have to copy the profile - object logic...
+
+        self.constants = {}
+
+        if 'mh_c_ks' in mh_params:
+            self.c.k_s = mh_params.pop('mh_c_ks')
+        self.constants['mh_c_ks'] = self.c.k_s
+
+        if 'mh_c_kw' in mh_params:
+            self.c.k_w = mh_params.pop('mh_c_kw')
+        self.constants['mh_c_kw'] = self.c.k_w
+
+        # Print kwargs not digested
+        for key in mh_params.keys():
+            print("Unknown mh_param:", key)
 
     def __str__(self):
         """String representation of the cross-bridge"""
@@ -803,15 +840,11 @@ class Crossbridge(Head):
         if tip_axial_loc is None:
             tip_axial_loc = self.bound_to.axial_location
         # Combine the two distances
-        return (tip_axial_loc - xb_axial_loc, lattice_spacing)
+        return tip_axial_loc - xb_axial_loc, lattice_spacing
 
     def _get_lattice_spacing(self):
         """Ask our superiors for lattice spacing data"""
         return self.parent_face.lattice_spacing
-
-
-def mh_isoform_profile(**kwargs):
-    return {}
 
 
 if __name__ == '__main__':

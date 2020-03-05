@@ -20,7 +20,7 @@ class BindingSite:
         Parameters:
             parent_thin_fil: the calling thin filament instance
             index: the axial index on the parent thin filament
-            address: largest to most local, indices for finding this
+            # ? address: largest to most local, indices for finding this
             orientation: select between six orientations (0-5)
         """
         # Remember passed attributes
@@ -39,6 +39,7 @@ class BindingSite:
 
     def __str__(self):
         """Return the current situation of the binding site"""
+        # noinspection PyListCreation
         ident = ['Binding Site #' + str(self.index) + ' Info']
         ident.append(14 * '=')
         ident.append('State: ' + str(self.state))
@@ -150,7 +151,7 @@ class ThinFace:
             parent_thin_fil: the thin filament on which this face sits
             orientation: which myosin face is opposite this face (0-5)
             index: location on the thin filament this face occupies (0-2)
-            address: largest to most local, indices for finding this
+            # ? address: largest to most local, indices for finding this
             binding_sites: links to the actin binding sites on this face
         """
         self.parent_thin = parent_thin_fil
@@ -159,6 +160,7 @@ class ThinFace:
         self.orientation = orientation
         self.binding_sites = binding_sites
         self.thick_face = None  # ThickFace instance this face interacts with
+        self.titin_fil = None
 
     def to_dict(self):
         """Create a JSON compatible representation of the thin face
@@ -192,7 +194,7 @@ class ThinFace:
         self.titin_fil = self.parent_thin.parent_lattice.resolve_address(
             tfd['titin_fil'])
         # Sub-structure keys
-        self.binding_sites = [self.parent_thin.resolve_address(bsa) \
+        self.binding_sites = [self.parent_thin.resolve_address(bsa)
                               for bsa in tfd['binding_sites']]
 
     def link_titin(self, titin_fil):
@@ -324,7 +326,9 @@ class ThinFilament:
     [Tanner2007]:http://dx.doi.org/10.1371/journal.pcbi.0030115
     """
 
-    def __init__(self, parent_lattice, index, face_orientations, start=0):
+    VALID_PARAMS = ["af_k"]
+
+    def __init__(self, parent_lattice, index, face_orientations, start=0, **af_params):
         """Initialize the thin filament
 
         Parameters:
@@ -394,8 +398,8 @@ class ThinFilament:
                          for face in mono_in_each_face]
         axial_flat = np.sort(np.hstack(axial_by_face))
         # Tie the nodes on each face into the flat axial locations
-        node_index_by_face = np.array([[np.nonzero(axial_flat == l)[0][0]
-                                        for l in f] for f in axial_by_face])
+        node_index_by_face = np.array([[np.nonzero(axial_flat == loc)[0][0]
+                                        for loc in face] for face in axial_by_face])
         # V AMA 3-4-2020 V
         # noinspection PyTypeChecker
         face_index_by_node = np.tile(None, len(axial_flat))
@@ -425,6 +429,17 @@ class ThinFilament:
         self.thick_faces = None  # Set after creation of thick filaments
         self.k = 1743
 
+        """Handle af_params"""
+        self.af_constants = {}  # A dictionary containing constants possibly changed by the user
+
+        # set spring constant
+        if 'af_k' in af_params.keys():
+            self.k = af_params.pop('af_k')
+        self.af_constants['af_k'] = self.k
+
+        for param in af_params:
+            print("Unknown af_param:", param)
+
     def to_dict(self):
         """Create a JSON compatible representation of the thin filament
 
@@ -446,7 +461,7 @@ class ThinFilament:
         thind['thin_faces'] = [tf.to_dict() for tf in thind['thin_faces']]
         thind['axial'] = list(thind['axial'])
         thind['rests'] = list(thind['rests'])
-        thind['binding_sites'] = [bs.to_dict() for bs in \
+        thind['binding_sites'] = [bs.to_dict() for bs in
                                   thind['binding_sites']]
         return thind
 
@@ -520,7 +535,7 @@ class ThinFilament:
         Returns:
             axial_forces: a list of the XB axial force at each node 
         """
-        if axial_locations == None:
+        if axial_locations is None:
             axial_forces = [site.axialforce() for site in self.binding_sites]
         else:
             axial_forces = [site.axialforce(loc) for
@@ -564,7 +579,7 @@ class ThinFilament:
         """Radial force produced by XBs at each binding site node 
 
         Parameters:
-            None
+            self
         Returns
             radial_forces: a list of (f_y, f_z) force vectors
         """
@@ -575,7 +590,7 @@ class ThinFilament:
         """The sum of the radial force experienced by this filament
 
         Parameters:
-            None
+            self
         Returns:
             radial_force: a single (f_y, f_z) vector
         """
@@ -601,7 +616,7 @@ class ThinFilament:
             net_force_on_each_binding_site: per-site force
         """
         # Use the thin filament's stored axial locations if none are passed
-        if axial_locations == None:
+        if axial_locations is None:
             axial_locations = np.hstack([self.axial, self.z_line])
         else:
             axial_locations = np.hstack([axial_locations, self.z_line])
@@ -664,10 +679,6 @@ class ThinFilament:
     def lattice_spacing(self):
         """Return the lattice spacing of the half-sarcomere"""
         return self.parent_lattice.lattice_spacing
-
-
-def af_isoform_profile(**kwargs):
-    return {}
 
 
 if __name__ == '__main__':

@@ -70,7 +70,7 @@ class Crown:
         # Local keys
         self.orientations = cd['orientations']
         # Remote keys
-        self.crossbridges = [self.parent_thick.resolve_address(xba) \
+        self.crossbridges = [self.parent_thick.resolve_address(xba)
                              for xba in cd['crossbridges']]
 
     def axialforce(self, axial_location=None):
@@ -134,7 +134,7 @@ class ThickFace:
     """
 
     def __init__(self, parent_filament, axial_locations, thin_face,
-                 index, start):
+                 index, start, **mh_params):
         """Instantiate the thick filament face with its heads
 
         Parameters:
@@ -161,7 +161,7 @@ class ThickFace:
             for i in range(len(axial_locations)):
                 # and add cross-bridges at the appropriate locations.
                 if crown_level in (1, 3):
-                    head = mh.Crossbridge(i, self, thin_face)
+                    head = mh.Crossbridge(i, self, thin_face, **mh_params)
                     self.xb.append(head)
                     self.xb_by_crown.append(head)
                 elif crown_level == 2:
@@ -173,12 +173,13 @@ class ThickFace:
                 if crown_level in (1, 3):
                     self.xb_by_crown.append(None)
                 elif crown_level == 2:
-                    head = mh.Crossbridge(i, self, thin_face)
+                    head = mh.Crossbridge(i, self, thin_face, **mh_params)
                     self.xb.append(head)
                     self.xb_by_crown.append(head)
                 crown_level = crown_level % 3 + 1
         # Record the thick filament node index at which cross-bridge sits
         self.xb_index = [xb.index for xb in self.xb]
+        self.titin_fil = None
 
     def __str__(self):
         """The string representation of the thick filament face
@@ -196,7 +197,7 @@ class ThickFace:
         thinbnd = 12 * ' ' + ''.join([xb_string[act.state]
                                       for act in self.thin_face.binding_sites])
         thin = 12 * ' ' + len(self.thin_face.binding_sites) * '-' + '|'
-        return (thick + '\n' + thickbnd + '\n' + thinbnd + '\n' + thin + '\n')
+        return thick + '\n' + thickbnd + '\n' + thinbnd + '\n' + thin + '\n'
 
     def to_dict(self):
         """Create a JSON compatible representation of the thick face
@@ -217,7 +218,7 @@ class ThickFace:
         thickfaced['thin_face'] = thickfaced['thin_face'].address
         thickfaced['titin_fil'] = thickfaced['titin_fil'].address
         thickfaced['xb'] = [xb.to_dict() for xb in thickfaced['xb']]
-        thickfaced['xb_by_crown'] = [xb.address if xb is not None else None \
+        thickfaced['xb_by_crown'] = [xb.address if xb is not None else None
                                      for xb in thickfaced['xb_by_crown']]
         return thickfaced
 
@@ -240,8 +241,8 @@ class ThickFace:
             tfd['thin_face'])
         self.titin_fil = self.parent_filament.parent_lattice.resolve_address(
             tfd['titin_fil'])
-        self.xb_by_crown = [self.resolve_address(xba) if xba is not None \
-                                else None for xba in tfd['xb_by_crown']]
+        self.xb_by_crown = [self.resolve_address(xba) if xba is not None
+                            else None for xba in tfd['xb_by_crown']]
         for data, xb in zip(tfd['xb'], self.xb):
             xb.from_dict(data)
 
@@ -269,7 +270,7 @@ class ThickFace:
         """The radial force this face experiences
 
         Parameters:
-            None:
+            self
         Returns:
             radial_force: sum of radial force of each myosin along the face
         """
@@ -308,8 +309,9 @@ class ThickFilament:
     It is attached to the m-line at one end and to nothing
     at the other (yet).
     """
+    VALID_PARAMS = ['mf_k']
 
-    def __init__(self, parent_lattice, index, thin_faces, start):
+    def __init__(self, parent_lattice, index, thin_faces, start, **mf_params):
         """Initialize the thick filament.
 
         Parameters:
@@ -415,6 +417,14 @@ class ThickFilament:
         self.parent_lattice = parent_lattice
         # Remember who you are
         self.index = index
+
+        """Extract crossbridge parameters for head creation"""
+        mh_params = {}
+        if 'mh_params' in mf_params.keys():
+            mh_params = mf_params.pop('mh_params')
+        elif 'mh_iso' in mf_params.keys():
+            mh_params = {'mh_iso': mf_params.pop('mh_iso')}
+
         self.address = ('thick_fil', index)
         # Create a list of crown axial locations and relevant data
         bare_zone = 58  # Length of the area before any crowns, nm
@@ -426,10 +436,10 @@ class ThickFilament:
         self.thick_faces = []
         for face_index in range(len(thin_faces)):
             self.thick_faces.append(ThickFace(self, self.axial,
-                                              thin_faces[face_index], face_index, start))
+                                              thin_faces[face_index], face_index, start, **mh_params))
         # Find the crown levels (1, 2, or 3) and orientation vectors
         crown_levels = [(n + start - 1) % 3 + 1 for n in range(n_cr)]
-        crown_orientations = [0 + (l == 2) for l in crown_levels]
+        crown_orientations = [0 + (level == 2) for level in crown_levels]
         # Instantiate the myosin crowns
         self.crowns = []
         # For each crown position...
@@ -449,6 +459,23 @@ class ThickFilament:
         self.thin_faces = thin_faces
         self.k = 2020  # Spring constant of thick filament in pN/nm
         self.b_z = bare_zone
+
+        """Handle mf_params"""
+        self.mh_constants = {}
+        for face in self.thick_faces:
+            for xb in face.xb:
+                constants = xb.constants
+                xb_index = str(self.index) + "_" + str(xb.index)
+                self.mh_constants[xb_index] = constants
+
+        self.mf_constants = {}  # A dictionary containing constants able to be overridden by the user
+
+        if 'mf_k' in mf_params.keys():
+            self.k = mf_params.pop('mf_k')
+        self.mf_constants['mf_k'] = self.k
+
+        for param in mf_params:
+            print("Unknown mf_param:", param)
 
     def __str__(self):
         """String representation of the thick filament"""
@@ -479,7 +506,7 @@ class ThickFilament:
         thickd['axial'] = list(thickd['axial'])
         thickd['crowns'] = [crown.to_dict() for crown in thickd['crowns']]
         thickd['rests'] = list(thickd['rests'])
-        thickd['thick_faces'] = [face.to_dict() for face in \
+        thickd['thick_faces'] = [face.to_dict() for face in
                                  thickd['thick_faces']]
         thickd['thin_faces'] = [face.address for face in thickd['thin_faces']]
         return thickd
@@ -539,7 +566,7 @@ class ThickFilament:
         """Return the total cross-bridge force on each crown
         This does not take into account the force from thick filament springs
         """
-        if axial_locations == None:
+        if axial_locations is None:
             axial_force = [cr.axialforce() for cr in self.crowns]
         else:
             axial_force = [cr.axialforce(loc) for
@@ -581,7 +608,7 @@ class ThickFilament:
         """The radial tension this filament experiences
 
         Parameters:
-            None
+            self
         Returns:
             radial_tension: the sum of the absolute value of the radial
                 force that each cross-bridge along the filament experiences
@@ -598,7 +625,7 @@ class ThickFilament:
         """Gives the radial force generate by the entire filament
 
         Parameters:
-            None
+            self
         Return:
             radial_force: (y,z) vector of radial force from all crowns"""
         # Retrieve the force all crowns generate
@@ -644,7 +671,7 @@ class ThickFilament:
             forces: axial force of the thick filament at each crown
         """
         # Use the thick filament's stored axial locations if none are passed
-        if axial_locations == None:
+        if axial_locations is None:
             axial_locations = np.hstack([0, self.axial])
         else:
             axial_locations = np.hstack([0, axial_locations])
@@ -652,7 +679,7 @@ class ThickFilament:
         dists = np.diff(axial_locations)
         spring_force = (dists - self.rests) * self.k
         # Location zero is the force of titin
-        net_force_at_crown = np.diff(spring_force)
+        # net_force_at_crown = np.diff(spring_force)
         titin_force = self._normed_total_titin_force()
         spring_force = np.hstack([spring_force, titin_force])
         net_force_at_crown = np.diff(spring_force)
@@ -698,11 +725,7 @@ class ThickFilament:
         else:
             f_y = 0.866 * crown_force[1] - 0.866 * crown_force[2]
             f_z = crown_force[0] - 0.5 * crown_force[1] - 0.5 * crown_force[2]
-        return (f_y, f_z)
-
-
-def mf_isoform_profile(**kwargs):
-    return {}
+        return f_y, f_z
 
 
 if __name__ == '__main__':

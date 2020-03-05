@@ -134,25 +134,9 @@ def actin_permissiveness_workloop(freq, phase, stim_duration,
     return out[2 * cycle_step_number:2 * cycle_step_number + number_of_timesteps]
 
 
-def af_isoform(**kwargs):
-    return hs.af.af_isoform_profile(**kwargs)
-
-
-def mf_isoform(**kwargs):
-    return hs.mf.mf_isoform_profile(**kwargs)
-
-
-def mh_isoform(**kwargs):
-    return hs.mf.mh.mh_isoform_profile(**kwargs)
-
-
-def ti_isoform(**kwargs):
-    return hs.ti.ti_isoform_profile(**kwargs)
-
-
 # ## Configure a run via a saved meta file
 def emit(path_local, path_s3, time_trace, poisson=0.0, ls=None, z_line=None,
-         actin_permissiveness=None, comment=None, write=True, **kwargs):
+         actin_permissiveness=None, comment=None, write=True, constants=None, **kwargs):
     """Produce a structured JSON file that will be consumed to create a run
 
     Import emit into an interactive workspace and populate a directory with
@@ -183,6 +167,7 @@ def emit(path_local, path_s3, time_trace, poisson=0.0, ls=None, z_line=None,
         Same as for z-line.
     comment: string, optional
         Space for comment on the purpose or other characteristics of the run
+    constants: a list of settings that were passed to the sarcomere to override settings
     write: bool, optional
         True (default) writes file to path_local/name.meta.json. Other values
         don't. In both cases the dictionary describing the run is returned.
@@ -228,12 +213,13 @@ def emit(path_local, path_s3, time_trace, poisson=0.0, ls=None, z_line=None,
     rund['lattice_spacing'] = ls
     rund['z_line'] = z_line
     rund['actin_permissiveness'] = actin_permissiveness
+    rund['hs_params'] = constants
     rund['timestep_length'] = np.diff(time_trace)[0]
     rund['timestep_number'] = len(time_trace)
     # ## Include kwargs
     for k in kwargs:
         rund[k] = kwargs[k]
-    # # ## Ensure vanilla JSON compatibility - json is not able to
+    # # ## Ensure vanilla JSON compatibility - vanilla json is not able to read/write numpy arrays
     for key, value in rund.items():
         if isinstance(value, np.ndarray):
             rund[key] = list(value)
