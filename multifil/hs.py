@@ -353,6 +353,15 @@ class hs:
             ti.Titin(self, 23, ti_thick(3, 3), ti_thin(1, 0), **ti_params),
         )
 
+        self.constants = {'ti': {titin.index: titin.constants for titin in self.titin},
+                          'af': {actin.index: actin.af_constants for actin in self.thin},
+                          'mf': {myosin.index: myosin.mf_constants for myosin in self.thick},
+                          'tm': {},
+                          'mh': {}}
+
+        for myosin in self.thick:
+            self.constants['mh'].update(myosin.mh_constants)
+
     def to_dict(self):
         """Create a JSON compatible representation of the thick filament
 

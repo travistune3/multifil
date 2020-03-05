@@ -93,6 +93,7 @@ class manage:
         lattice_spacing = none_if_list('lattice_spacing')
         z_line = none_if_list('z_line')
         actin_permissiveness = none_if_list('actin_permissiveness')
+        hs_params = none_if_list('hs_params')
         # Time dependent values
         time_dep_dict = {}
         for prop in ['z_line', 'actin_permissiveness']:
@@ -106,6 +107,7 @@ class manage:
             actin_permissiveness=actin_permissiveness,
             timestep_len=meta['timestep_length'],
             time_dependence=time_dep_dict,
+            **hs_params
         )
         return sarc
 
@@ -248,6 +250,7 @@ class data_file:
         self.working_directory = working_dir
         self.data_dict = {
             'name': self.meta['name'],
+            'constants': self.sarc.constants,
             'timestep_length': self.sarc.timestep_len,
             'timestep': [],
             'z_line': [],
