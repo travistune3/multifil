@@ -357,6 +357,7 @@ class Head:
         self.etaDG = 0.68 * -deltaG     # strong state efficiency: 0.68
         # The time_trace-step, master of all time_trace
         self._timestep = 1  # ms
+        self.detach_rate_type = 'original'
 
     def transition(self, bs, ap):
         """Transition to a new state (or not)
@@ -568,19 +569,28 @@ class Head:
 
         Takes:
             bs: relative Crown to Actin distance (x,y)
+            rate-type: which rate to use # TODO don't leave it like this forever, we need to decide on a rate
         Returns
             rate: per ms rate of detaching from the binding site
         """
-        # # ## Based on the energy in the tight state
+        # ## Based on the energy in the tight state
         # loose_energy = self.energy(bs, "loose")
-        tight_energy = self.energy(bs, "tight")
-        # noinspection PyUnusedLocal
-        rate = m.sqrt(0.01 * tight_energy) + 0.02
 
-        rate = 112      # per s
-        rate *= 1e-3    # per ms
-
-        return float(rate)
+        if self.detach_rate_type == 'original':             # original multifil detachment rate
+            tight_energy = self.energy(bs, "tight")
+            rate = m.sqrt(0.01 * tight_energy) + 0.02
+            return float(rate)
+        elif self.detach_rate_type == 'fixed':              # Fixed rate - Alison Schroer data
+            return 112 * 1e-3
+        elif self.detach_rate_type == 'force_sensitive':    # TODO Force sensitive detachment rate
+            """ The issue here is currently that 'head' does not have access to Crossbridge variables.
+                        The current code structure and abstraction need to be fiddled with."""
+            raise ModuleNotFoundError("This code has not been implemented yet")
+            # distortion_left = self.axialforce()
+            # distortion_right =
+            # return 0
+        else:  # rate type is not valid
+            raise TypeError("supplied detachment_rate key is not valid")
 
     def _free_energy(self, tip_location, state):
         """Free energy of the Head
@@ -617,7 +627,9 @@ class Crossbridge(Head):
 
     # kwargs that can be used to edit crossbridge phenotype
     # crossbridge can also accept phenotype profiles
-    VALID_PARAMS = ['mh_c_ks', 'mh_c_kw', 'mh_c_rs', 'mh_c_rw', 'mh_g_ks', 'mh_g_kw', 'mh_g_rs', 'mh_g_rw']
+    VALID_PARAMS = ['mh_c_ks', 'mh_c_kw', 'mh_c_rs', 'mh_c_rw',
+                    'mh_g_ks', 'mh_g_kw', 'mh_g_rs', 'mh_g_rw',
+                    'detach_rate_type']
 
     def __init__(self, index, parent_face, thin_face, **mh_params):
         """Set up the cross-bridge
@@ -675,28 +687,24 @@ class Crossbridge(Head):
         if key in mh_params.keys():
             self.c.k_s = mh_params.pop(key)
         self.constants[key] = self.c.k_s
-        key = None
 
         # converter k_weak_state
         key = 'mh_c_kw'
         if key in mh_params.keys():
             self.c.k_w = mh_params.pop(key)
         self.constants[key] = self.c.k_w
-        key = None
 
         # converter rest_weak_state
         key = 'mh_c_rw'
         if key in mh_params.keys():
             self.c.r_w = mh_params.pop(key)
         self.constants[key] = self.c.r_w
-        key = None
 
         # converter rest_strong_state
         key = 'mh_c_rs'
         if key in mh_params.keys():
             self.c.r_s = mh_params.pop(key)
         self.constants[key] = self.c.r_s
-        key = None
 
         """globular definitions"""
 
@@ -705,28 +713,30 @@ class Crossbridge(Head):
         if key in mh_params.keys():
             self.g.k_s = mh_params.pop(key)
         self.constants[key] = self.g.k_s
-        key = None
 
         # globular k_weak_state
         key = 'mh_g_kw'
         if key in mh_params.keys():
             self.g.k_w = mh_params.pop(key)
         self.constants[key] = self.g.k_w
-        key = None
 
         # globular rest_weak_state
         key = 'mh_g_rw'
         if key in mh_params.keys():
             self.g.r_w = mh_params.pop(key)
         self.constants[key] = self.g.r_w
-        key = None
 
         # globular rest_strong_state
         key = 'mh_g_rs'
         if key in mh_params.keys():
             self.g.r_s = mh_params.pop(key)
         self.constants[key] = self.g.r_s
-        key = None
+
+        # rate type
+        key = 'detachment_rate'
+        if key in mh_params.keys():
+            self.detach_rate_type = mh_params.pop(key)
+        self.constants[key] = self.detach_rate_type
 
     def __str__(self):
         """String representation of the cross-bridge"""
