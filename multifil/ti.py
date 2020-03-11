@@ -106,7 +106,7 @@ class Titin:
             td['thin_face'])
 
     def angle(self):
-        """Caclulate the angle the titin makes relative to thick filament"""
+        """Calculate the angle the titin makes relative to thick filament"""
         act_loc = self.thin_face.parent_thin.parent_lattice.z_line
         myo_loc = self.thick_face.get_axial_location(-1)
         ls = self.parent_lattice.lattice_spacing
@@ -122,8 +122,8 @@ class Titin:
         return length
 
     def stiffness(self):
-        """Need instintanious stiffness at the current length to normalize
-        force for settling at each timestep. We get this as the derivitive of
+        """Need instantaneous stiffness at the current length to normalize
+        force for settling at each timestep. We get this as the derivative of
         force with respect to x. D[a*exp(b*x), x] = a*b*exp(b*x)
         """
         return self.force() * self.b
@@ -158,13 +158,13 @@ class Titin:
         # Hookean Model
         # return half_sarcomere.k * (half_sarcomere.length() - half_sarcomere.rest)
 
-    def axialforce(self):
+    def axial_force(self):
         """Return the total force the titin filament exerts on the
         thick filament's final node, (negate for the thin filament side)
         """
         return self.force() * np.cos(self.angle())  # ## CHECK_JDP ##
 
-    def radialforce(self):
+    def radial_force(self):
         """Return the force in the radial direction (positive is compressive)
         TODO: The 'positive is compressive' part needs to be double checked
         """
