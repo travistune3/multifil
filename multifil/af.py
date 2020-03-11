@@ -94,7 +94,7 @@ class BindingSite:
         if self.bound_to is None:
             return 0.0
         # Axial force on actin is equal but opposite
-        return -self.bound_to.axialforce(tip_axial_loc=axial_location)
+        return -self.bound_to.axial_force(tip_axial_loc=axial_location)
 
     def radialforce(self):
         """Radial force vector of the bound cross-bridge, if any
@@ -104,7 +104,7 @@ class BindingSite:
         """
         if self.bound_to is None:
             return np.array([0.0, 0.0])
-        force_mag = -self.bound_to.radialforce()  # Equal but opposite
+        force_mag = -self.bound_to.radial_force()  # Equal but opposite
         return np.multiply(force_mag, self.orientation)
 
     def bind_to(self, crossbridge):
@@ -276,7 +276,7 @@ class ThinFace:
         if self.thick_face is None:
             raise AttributeError("Thick filament not assigned yet.")
         # Now find the forces on each cross-bridge
-        radial_forces = [site.radialforce() for site in self.binding_sites]
+        radial_forces = [site.radial_force() for site in self.binding_sites]
         return np.sum(radial_forces, 1)
 
     def set_thick_face(self, myosin_face):
@@ -307,11 +307,11 @@ class ThinFilament:
     filament's nodes.
 
     # ## Naive repeating geometry of the thin filament
-    The binding nodes of the two actin filaments must be offset by a
-    multiple of the angle (120 degrees)x(distance offset/(24.8 nm)), but
+    The binding nodes of the two actin filaments must be mean by a
+    multiple of the angle (120 degrees)x(distance mean/(24.8 nm)), but
     not by 360 degrees, or one of the actin filaments would have no binding
     sites facing a neighboring thick filament.  We assume that the actin
-    nodes on the two strands are offset by half of the distance between
+    nodes on the two strands are mean by half of the distance between
     adjacent nodes (12.4 nm) and 180 degrees.  This means that if one actin
     filament has a binding site facing one myosin filament, the second actin
     filament will have a binding site facing a second myosin filament
@@ -605,7 +605,7 @@ class ThinFilament:
         return dists - self.rests
 
     def displacement(self):
-        """A metric of how much the thin filament locations are offset"""
+        """A metric of how much the thin filament locations are mean"""
         return np.sum(np.abs(self.displacement_per_node()))
 
     def _axial_thin_filament_forces(self, axial_locations=None):

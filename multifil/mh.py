@@ -107,13 +107,13 @@ class Spring:
 """This python class is no longer used, kept around for equations and line count"""  # class SingleSpringHead:
 #     """A single-spring myosin head, as in days of yore"""
 #
-#     def __init__(self):
+#     def __init__(half_sarcomere):
 #         # noinspection PyArgumentList
 #         random.seed()  # Ensure proper seeding
 #
 #         """Create the spring that makes up the head and set energy values"""
-#         self.state = "free"
-#         self.g = Spring({
+#         half_sarcomere.state = "free"
+#         half_sarcomere.g = Spring({
 #             'rest_weak': 5,
 #             'rest_strong': 0,
 #             'konstant_weak': 5 / 3.976,
@@ -123,13 +123,13 @@ class Spring:
 #         atp = 5 * 10 ** -3
 #         adp = 30 * 10 ** -6
 #         phos = 3 * 10 ** -3
-#         self.deltaG = abs(-g_atp - log(atp / (adp * phos)))
-#         self.alpha = 0.28
-#         self.eta = 0.68
+#         half_sarcomere.deltaG = abs(-g_atp - log(atp / (adp * phos)))
+#         half_sarcomere.alpha = 0.28
+#         half_sarcomere.eta = 0.68
 #         # The time_trace-step, master of all time_trace
-#         self.timestep = 1  # ms
+#         half_sarcomere.timestep = 1  # ms
 #
-#     def transition(self, bs):
+#     def transition(half_sarcomere, bs):
 #         """Transition to a new state (or not)
 #
 #         Takes:
@@ -140,28 +140,28 @@ class Spring:
 #         # # ## Transitions rates are checked against a random number
 #         check = random.rand()
 #         # # ## Check for transitions depending on the current state
-#         if self.state == "free":
-#             if self._r12(bs) > check:
-#                 self.state = "loose"
+#         if half_sarcomere.state == "free":
+#             if half_sarcomere._r12(bs) > check:
+#                 half_sarcomere.state = "loose"
 #                 return '12'
-#         elif self.state == "loose":
-#             if self._r23(bs) > check:
-#                 self.state = "tight"
+#         elif half_sarcomere.state == "loose":
+#             if half_sarcomere._r23(bs) > check:
+#                 half_sarcomere.state = "tight"
 #                 return '23'
-#             elif (1 - self._r21(bs)) < check:
-#                 self.state = "free"
+#             elif (1 - half_sarcomere._r21(bs)) < check:
+#                 half_sarcomere.state = "free"
 #                 return '21'
-#         elif self.state == "tight":
-#             if self._r31(bs) > check:
-#                 self.state = "free"
+#         elif half_sarcomere.state == "tight":
+#             if half_sarcomere._r31(bs) > check:
+#                 half_sarcomere.state = "free"
 #                 return '31'
-#             elif (1 - self._r32(bs)) < check:
-#                 self.state = "loose"
+#             elif (1 - half_sarcomere._r32(bs)) < check:
+#                 half_sarcomere.state = "loose"
 #                 return '32'
 #         # Got this far? Than no transition occurred!
 #         return None
 #
-#     def axialforce(self, tip_location):
+#     def axialforce(half_sarcomere, tip_location):
 #         """Find the axial force a Head generates at a given location
 #
 #         Takes:
@@ -172,13 +172,13 @@ class Spring:
 #         # # ## Get the Head length
 #         g_len = tip_location[0]
 #         # # ## Write all needed values to local variables
-#         g_s = self.g.rest(self.state)
-#         g_k = self.g.constant(self.state)
+#         g_s = half_sarcomere.g.rest(half_sarcomere.state)
+#         g_k = half_sarcomere.g.constant(half_sarcomere.state)
 #         # # ## Find and return force
 #         f_x = g_k * (g_len - g_s)
 #         return f_x
 #
-#     def radialforce(self, tip_location):
+#     def radialforce(half_sarcomere, tip_location):
 #         """Find the radial force a Head generates at a given location
 #
 #         Takes:
@@ -188,7 +188,7 @@ class Spring:
 #         """
 #         return 0.0
 #
-#     def energy(self, tip_location, state=None):
+#     def energy(half_sarcomere, tip_location, state=None):
 #         """Return the energy in the xb with the given parameters
 #
 #         Takes:
@@ -197,20 +197,20 @@ class Spring:
 #         Returns:
 #             xb_energy: the energy stored in the cross-bridge"""
 #         if state is None:
-#             state = self.state
-#         return self.g.energy(tip_location[0], state)
+#             state = half_sarcomere.state
+#         return half_sarcomere.g.energy(tip_location[0], state)
 #
 #     @property
-#     def numeric_state(self):
+#     def numeric_state(half_sarcomere):
 #         """Return the numeric state (0, 1, or 2) of the head"""
 #         lookup_state = {"free": 0, "loose": 1, "tight": 2}
-#         return lookup_state[self.state]
+#         return lookup_state[half_sarcomere.state]
 #
-#     def _set_timestep(self, timestep):
+#     def _set_timestep(half_sarcomere, timestep):
 #         """Set the length of time_trace step used to calculate transitions"""
-#         self.timestep = timestep
+#         half_sarcomere.timestep = timestep
 #
-#     def _r12(self, bs):
+#     def _r12(half_sarcomere, bs):
 #         """Binding rate, based on the distance from the Head tip to a Actin
 #
 #         Takes:
@@ -219,15 +219,15 @@ class Spring:
 #             probability: chance of binding occurring
 #         """
 #         # # ## Get needed values
-#         k_xb = self.g.constant("free")
-#         xb_0 = self.g.rest("free")
+#         k_xb = half_sarcomere.g.constant("free")
+#         xb_0 = half_sarcomere.g.rest("free")
 #         A = 2000  # From Tanner, 2008 Pg 1209
 #         # # ## Calculate the binding probability
 #         rate = (A * sqrt(k_xb / (2 * pi)) *
-#                 m.exp(-.5 * k_xb * (bs[0] - xb_0) ** 2)) * self.timestep
+#                 m.exp(-.5 * k_xb * (bs[0] - xb_0) ** 2)) * half_sarcomere.timestep
 #         return float(rate)
 #
-#     def _r21(self, bs):
+#     def _r21(half_sarcomere, bs):
 #         """The reverse transition, from loosely bound to unbound
 #
 #         Takes:
@@ -236,16 +236,16 @@ class Spring:
 #             rate: probability of transition occurring this timestep
 #         """
 #         # # ## The rate depends on the states' free energies
-#         g_1 = self._free_energy(bs, "free")
-#         g_2 = self._free_energy(bs, "loose")
+#         g_1 = half_sarcomere._free_energy(bs, "free")
+#         g_2 = half_sarcomere._free_energy(bs, "loose")
 #         # # ## Rate, as in pg 1209 of Tanner et al, 2007
 #         try:
-#             rate = self._r12(bs) / m.exp(g_1 - g_2)
+#             rate = half_sarcomere._r12(bs) / m.exp(g_1 - g_2)
 #         except ZeroDivisionError:
 #             rate = 1
 #         return float(rate)
 #
-#     def _r23(self, bs):
+#     def _r23(half_sarcomere, bs):
 #         """Probability of becoming tightly bound if loosely bound
 #
 #         Takes:
@@ -254,17 +254,17 @@ class Spring:
 #             rate: probability of becoming tightly bound
 #         """
 #         # # ## Get other needed values
-#         k_xb = self.g.constant("loose")
-#         xb_0 = self.g.rest("loose")
+#         k_xb = half_sarcomere.g.constant("loose")
+#         xb_0 = half_sarcomere.g.rest("loose")
 #         B = 100  # From Tanner, 2008 Pg 1209
 #         C = 1
 #         D = 1
 #         # # ## Rate taken from single cross-bridge work
 #         rate = (B / sqrt(k_xb) * (1 - m.tanh(C * sqrt(k_xb) *
-#                                              (bs[0] - xb_0))) + D) * self.timestep
+#                                              (bs[0] - xb_0))) + D) * half_sarcomere.timestep
 #         return float(rate)
 #
-#     def _r32(self, bs):
+#     def _r32(half_sarcomere, bs):
 #         """The reverse transition, from tightly to loosely bound
 #
 #         Takes:
@@ -273,15 +273,15 @@ class Spring:
 #             rate: probability of becoming loosely bound
 #         """
 #         # # ## Governed as in self_r21
-#         g_2 = self._free_energy(bs, "loose")
-#         g_3 = self._free_energy(bs, "tight")
+#         g_2 = half_sarcomere._free_energy(bs, "loose")
+#         g_3 = half_sarcomere._free_energy(bs, "tight")
 #         try:
-#             rate = self._r23(bs) / m.exp(g_2 - g_3)
+#             rate = half_sarcomere._r23(bs) / m.exp(g_2 - g_3)
 #         except ZeroDivisionError:
 #             rate = 1
 #         return float(rate)
 #
-#     def _r31(self, bs):
+#     def _r31(half_sarcomere, bs):
 #         """Probability of unbinding if tightly bound
 #
 #         Takes:
@@ -290,16 +290,16 @@ class Spring:
 #             rate: probability of detaching from the binding site
 #         """
 #         # # ## Get needed values
-#         k_xb = self.g.constant("tight")
+#         k_xb = half_sarcomere.g.constant("tight")
 #         M = 3600  # From Tanner, 2008 Pg 1209
 #         N = 40
 #         P = 20
 #         # # ## Based on the energy in the tight state
 #         rate = (sqrt(k_xb) * (sqrt(M * (bs[0] - 4.76) ** 2) -
-#                               N * (bs[0] - 4.76)) + P) * self.timestep
+#                               N * (bs[0] - 4.76)) + P) * half_sarcomere.timestep
 #         return float(rate)
 #
-#     def _free_energy(self, tip_location, state):
+#     def _free_energy(half_sarcomere, tip_location, state):
 #         """Free energy of the Head
 #
 #         Takes:
@@ -311,14 +311,14 @@ class Spring:
 #         if state == "free":
 #             return 0
 #         elif state == "loose":
-#             k_xb = self.g.constant(state)
-#             xb_0 = self.g.rest(state)
+#             k_xb = half_sarcomere.g.constant(state)
+#             xb_0 = half_sarcomere.g.rest(state)
 #             x = tip_location[0]
-#             return self.alpha * -self.deltaG + k_xb * (x - xb_0) ** 2
+#             return half_sarcomere.alpha * -half_sarcomere.deltaG + k_xb * (x - xb_0) ** 2
 #         elif state == "tight":
-#             k_xb = self.g.constant(state)
+#             k_xb = half_sarcomere.g.constant(state)
 #             x = tip_location[0]
-#             return self.eta * -self.deltaG + k_xb * x ** 2
+#             return half_sarcomere.eta * -half_sarcomere.deltaG + k_xb * x ** 2
 
 
 class Head:
@@ -479,7 +479,7 @@ class Head:
             rate: a per ms rate to convert to probability
         Returns:
             probability: the probability the event occurs during a timestep
-                of length determined by self.timestep
+                of length determined by half_sarcomere.timestep
         """
         return 1 - m.exp(-rate * self.timestep_len)
 
@@ -581,7 +581,7 @@ class Head:
             rate: per ms rate of detaching from the binding site
         """
         # ## Based on the energy in the tight state
-        # loose_energy = self.energy(bs, "loose")
+        # loose_energy = half_sarcomere.energy(bs, "loose")
 
         if self.detach_rate_type == 'original':             # original multifil detachment rate
             tight_energy = self.energy(bs, "tight")

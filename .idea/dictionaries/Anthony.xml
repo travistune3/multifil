@@ -2,18 +2,31 @@
   <dictionary name="Anthony">
     <words>
       <w>actin</w>
+      <w>auxetic</w>
       <w>crossbridge</w>
       <w>crossbridges</w>
+      <w>egelman</w>
+      <w>filcenter</w>
+      <w>frac</w>
       <w>isoform</w>
       <w>konstant</w>
+      <w>mathematica</w>
+      <w>millman</w>
+      <w>motil</w>
       <w>multifil</w>
       <w>myosin</w>
+      <w>physiol</w>
+      <w>proc</w>
       <w>sarc</w>
       <w>sarcomere</w>
       <w>schroer</w>
       <w>timestep</w>
       <w>timesteps</w>
       <w>titin</w>
+      <w>tropomyosin</w>
+      <w>versioning</w>
+      <w>woodhead</w>
+      <w>zline</w>
     </words>
   </dictionary>
 </component>

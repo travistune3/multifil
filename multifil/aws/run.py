@@ -47,7 +47,7 @@ class manage:
             Whether to complete the run without further intervention or treat
             as an interactive session.
         """
-        # self.s3 = s3()
+        # half_sarcomere.s3 = s3()
         self.uuid = metafile.split('/')[-1].split('.')[0]
         self.working_dir = self._make_working_dir(self.uuid)
         self.metafile = self._parse_metafile_location(metafile)
@@ -73,7 +73,7 @@ class manage:
         """Parse the passed location, downloading the metafile if necessary"""
         if not os.path.exists(metafile):
             raise FileNotFoundError("meta file not found")
-            # return self.s3.pull_from_s3(metafile, self.working_dir)
+            # return half_sarcomere.s3.pull_from_s3(metafile, half_sarcomere.working_dir)
         else:
             mfn = '/' + metafile.split('/')[-1]
             return shutil.copyfile(metafile, self.working_dir + mfn)
@@ -239,7 +239,7 @@ class sarc_file:
     def delete(self):
         """Delete the sarc zip file from disk"""
         try:
-            # print("removing zip filename\n\t", self.zip_filename, "\n")
+            # print("removing zip filename\n\t", half_sarcomere.zip_filename, "\n")
             os.remove(self.zip_filename)
         except FileNotFoundError:
             print("Error removing temp file, check C:\/tmp for", self.zip_filename)
@@ -291,7 +291,7 @@ class data_file:
         # ## Lambda helpers
         ad = lambda n, v: self.data_dict[n].append(v)
         # ## Calculated components
-        radial_force = self.sarc.radialforce()
+        radial_force = self.sarc.radial_force()
         xb_fracs = self.sarc.get_frac_in_states()
         xb_trans = sum(sum(self.sarc.last_transitions, []), [])
         act_perm = np.mean(self.sarc.actin_permissiveness)
@@ -303,10 +303,10 @@ class data_file:
         ad('timestep', self.sarc.current_timestep)
         ad('z_line', self.sarc.z_line)
         ad('lattice_spacing', self.sarc.lattice_spacing)
-        ad('axial_force', self.sarc.axialforce())
+        ad('axial_force', self.sarc.axial_force())
         ad('radial_force_y', radial_force[0])
         ad('radial_force_z', radial_force[1])
-        ad('radial_tension', self.sarc.radialtension())
+        ad('radial_tension', self.sarc.radial_tension())
         ad('xb_fraction_free', xb_fracs[0])
         ad('xb_fraction_loose', xb_fracs[1])
         ad('xb_fraction_tight', xb_fracs[2])
@@ -338,7 +338,7 @@ class data_file:
     def delete(self):
         """Delete the data file from disk"""
         try:
-            # print("removing working filename\n\t", self.working_filename, "\n")
+            # print("removing working filename\n\t", half_sarcomere.working_filename, "\n")
             os.remove(self.working_filename)
         except FileNotFoundError:
             print("File not created yet")

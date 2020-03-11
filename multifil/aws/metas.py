@@ -57,17 +57,17 @@ def time(timestep_length, run_length_in_ms):
     return np.arange(0, run_length_in_ms, timestep_length)
 
 
-def zline_workloop(offset, amp, freq, time):
+def zline_workloop(mean, amp, freq, time):
     """A sinusoidal oscillatory length trace.
 
     Parameters:
-        offset: resting z-line value, will start here
+        mean: resting z-line value, will start here
         amp: peak-to-peak amplitude
         freq: frequency of oscillation
         time: time_trace trace in ms to provide length trace for
     """
     period = 1000 / freq
-    zline = offset + 0.5 * amp * np.cos(2 * np.pi * time / period)
+    zline = mean + 0.5 * amp * np.cos(2 * np.pi * time / period)
     return zline
 
 
@@ -157,7 +157,7 @@ def emit(path_local, path_s3, time_trace, poisson=0.0, ls=None, z_line=None,
         negative for auxetic
     ls: float, optional
         Specifies the initial starting lattice spacing which will act as a
-        zero or offset for the spacing. If not given, the default lattice
+        zero or mean for the spacing. If not given, the default lattice
         spacing from hs.hs will be used.
     z_line: float or iterable, optional
         If not given, default distance specified in hs.hs is used. If given as

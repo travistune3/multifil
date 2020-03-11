@@ -139,7 +139,7 @@ class Titin:
             return self.a * np.exp(self.b * x)
         # else:
         # Cubic model
-        # x = length - self.rest
+        # x = length - half_sarcomere.rest
         # a = 3.25e-5
         # b = -5e-3
         # c = 9e-1
@@ -147,7 +147,7 @@ class Titin:
         # return a*(x**3) + b*(x**2) + c*x + d #Linke et al. PNAS 1998
         # else:
         # Sawtooth Model
-        # extension = length - self.rest
+        # extension = length - half_sarcomere.rest
         # a = 1.2e-6
         # b = 3
         # c = 0.5e-6#*random.rand()
@@ -156,7 +156,7 @@ class Titin:
         # return a*extension**b + c*np.fmod(extension,d)**e
         # else:
         # Hookean Model
-        # return self.k * (self.length() - self.rest)
+        # return half_sarcomere.k * (half_sarcomere.length() - half_sarcomere.rest)
 
     def axialforce(self):
         """Return the total force the titin filament exerts on the
