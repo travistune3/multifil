@@ -19,6 +19,11 @@ from . import ti
 
 class hs:
     """The half-sarcomere and ways to manage it"""
+    VALID_PARAMS = []
+    for component in [mf.ThickFilament, mf.mh.Crossbridge,
+                      af.ThinFilament, af.tm.TmSite,
+                      ti.Titin]:
+        VALID_PARAMS.extend(component.VALID_PARAMS)
 
     def __init__(self, lattice_spacing=None, z_line=None, poisson=None,
                  pCa=None, timestep_len=1, time_dependence=None, starts=None, **kwargs):
@@ -121,24 +126,32 @@ class hs:
 
         """ ## Handle Kwargs ## """
         # Titin constants
-        ti_params = {}
-        if 'ti_a' in kwargs.keys():
-            ti_params['ti_a'] = kwargs.pop('ti_a')
-        if 'ti_b' in kwargs.keys():
-            ti_params['ti_b'] = kwargs.pop('ti_b')
+        # Isomer-available
+        valid_ti_params = ti.Titin.VALID_PARAMS
+        if 'ti_iso' in kwargs.keys():
+            for param in valid_ti_params:
+                assert param not in kwargs.keys(), "ti_iso cannot be set at the same time as ti parameters"
+            ti_params = {"ti_iso": kwargs.pop('ti_iso')}
+        else:
+            ti_params = {}
+            for param in valid_ti_params:
+                if param in kwargs.keys():
+                    ti_params[param] = kwargs.pop(param)
 
         # Tropomyosin/Troponin constants
         tm_params = {}
         if 'tm_coop' in kwargs.keys():
             tm_params['tm_coop'] = kwargs.pop('tm_coop')
 
-        # Actin constants
-        af_params = {"tm_params": tm_params}
-        if 'af_k' in kwargs.keys():
-            af_params['af_k'] = kwargs.pop('af_k')
+        # Actin thin filament constants
+        # Isomer unavailable
+        valid_af_params = af.ThinFilament.VALID_PARAMS
+        af_params = {}
+        for param in valid_af_params:
+            if param in kwargs.keys():
+                af_params[param] = kwargs.pop(param)
 
         # Crossbridge constants
-
         valid_mh_params = mf.mh.Crossbridge.VALID_PARAMS
         if 'mh_iso' in kwargs.keys():
             for param in valid_mh_params:
@@ -177,7 +190,7 @@ class hs:
         if lattice_spacing is None:
             lattice_spacing = 14.0
         if z_line is None:
-            z_line = 1250
+            z_line = 1250   # nm
         if pCa is None:
             pCa = 4.0
         if poisson is None:
@@ -468,7 +481,7 @@ class hs:
         for data, thin in zip(sd['thin'], self.thin):
             thin.from_dict(data)
 
-    def run(self, time_steps=100, callback=None, bar=True, every=1, print_every=10):
+    def run(self, time_steps=100, callback=None, bar=True, every=1):
         """Run the model for the specified number of timesteps
 
         Parameters:
@@ -483,7 +496,6 @@ class hs:
                 total_steps, sec_left, sec_passed, process_name, output).
                 (Defaults to True)
             every: how many timesteps to update after
-            print_every: how many timesteps to print update after
         Returns:
             output: the results of the callback after each timestep
             exit_code: how the simulation was terminated
@@ -541,8 +553,14 @@ class hs:
     @staticmethod
     def tm_bar(i, time_steps, toc, proc_name, output, **bar_kwargs):
         hs.print_bar(i=i, time_steps=time_steps, toc=toc, proc_name=proc_name, **bar_kwargs)
-        if 'tm_fraction_bound' in output.keys():
-            sys.stdout.write("\t\t" + str(output['tm_fraction_bound'][i]))
+        sys.stdout.write("\n\t\t\t\t\t\t\t")
+        for key in ["tm_unbound", "tm_bound", "tm_closed", "tm_open"]:
+            if key in output.keys():
+                fraction = output[key][i]
+                fraction *= 10000
+                fraction = int(fraction)
+                fraction = fraction / 100.0
+                sys.stdout.write("\t" + str(fraction))
             sys.stdout.flush()
 
     @staticmethod
@@ -636,6 +654,16 @@ class hs:
         return bound
 
     @property
+    def _tm_open(self):
+        uncovered = 0
+        for thin in self.thin:
+            for tm in thin.tm:
+                for tm_site in tm.sites:
+                    if tm_site.state == 3:
+                        uncovered += 1
+        return uncovered
+
+    @property
     def _tn_total(self):
         total_tn = 0
         for thin in self.thin:
@@ -657,7 +685,7 @@ class hs:
     def tm_report(self):
         report = {}
         # calculate average rates across all binding sites and average cooperativity state
-        rates = [0, 0, 0, 0, 0, 0]
+        rates = [0, 0, 0, 0, 0, 0, 0, 0]
         count = 0
         coop = 0
         for thin in self.thin:
@@ -672,11 +700,15 @@ class hs:
         for i in range(len(rates)):
             rates[i] /= count
 
-        rate_keys = ["r_12", "r_21", "r_23", "r_32", "r_31", "r_13"]
+        rate_keys = ['r_12', 'r_21',
+                     'r_23', "r_32",
+                     "r_34", "r_43,",
+                     "r_41", "r_14"]
         for i in range(len(rates)):
             report.update({rate_keys[i]: rates[i]})
 
-        xb_fracs = self.get_frac_in_states()
+        xb_fracs = self.get_xb_frac_in_states()
+        tm_fracs = self.get_tm_frac_in_states()
 
         report.update({"coop": coop / count,
                        "tm_fraction_bound": self._tnca_count / self._tn_total,
@@ -684,7 +716,11 @@ class hs:
                        "ca": self.c_ca,
                        "xb_fraction_free": xb_fracs[0],
                        "xb_fraction_loose": xb_fracs[1],
-                       "xb_fraction_tight": xb_fracs[2]})
+                       "xb_fraction_tight": xb_fracs[2],
+                       "tm_unbound": tm_fracs[0],
+                       "tm_bound": tm_fracs[1],
+                       "tm_closed": tm_fracs[2],
+                       "tm_open": tm_fracs[3]})
         report.update(self.concentrations)
         return report
 
@@ -802,12 +838,20 @@ class hs:
         mash = np.hstack([thick_f, thin_f])
         return mash
 
-    def get_frac_in_states(self):
+    def get_xb_frac_in_states(self):
         """Calculate the fraction of cross-bridges in each state"""
         nested = [t.get_states() for t in self.thick]
         xb_states = [xb for fil in nested for face in fil for xb in face]
         num_in_state = [xb_states.count(state) for state in range(3)]
         frac_in_state = [n / float(len(xb_states)) for n in num_in_state]
+        return frac_in_state
+
+    def get_tm_frac_in_states(self):
+        """Calculate the fraction of tm_sites in each state"""
+        nested = [t.get_states() for t in self.thin]
+        tm_states = [xb for fil in nested for face in fil for xb in face]
+        num_in_state = [tm_states.count(state) for state in range(4)]
+        frac_in_state = [n / float(len(tm_states)) for n in num_in_state]
         return frac_in_state
 
     def update_ls_from_poisson_ratio(self):

@@ -68,17 +68,20 @@ class TmSite:
         # ## Kinetics from Tanner 2007, 2012, and thesis
         K1 = 1e5  # per mole Ca
         K2 = 10  # unit-less
-        K3 = 1e6  # unit-less
-        k_12 = 5e5  # per mole Ca per sec
+        K3 = 10  # TODO determine equilibrium
+        K4 = 1e6  # unit-less
+        k_12 = 1e8  # per mole Ca per sec # TODO verify MR
         k_23 = 10  # per sec
-        k_31 = 5  # per sec
+        k_34 = 10  # TODO determine units
+        k_41 = 50  # per sec
         s_per_ms = 1e-3  # seconds per millisecond
         k_12 *= s_per_ms  # convert rates from
         k_23 *= s_per_ms  # occurrences per second
-        k_31 *= s_per_ms  # to occurrences per ms
+        k_34 *= s_per_ms  # to
+        k_41 *= s_per_ms  # occurrences per ms
         coop = 100  # cooperative multiplier
-        self._K1, self._K2, self._K3 = K1, K2, K3
-        self._k_12, self._k_23, self._k_31 = k_12, k_23, k_31
+        self._K1, self._K2, self._K3, self._K4 = K1, K2, K3, K4
+        self._k_12, self._k_23, self._k_34, self._k_41 = k_12, k_23, k_34, k_41
         self._coop = coop
         self._concentrations = None
 
@@ -124,8 +127,8 @@ class TmSite:
             state: kinetic state of site
             binding_influence: what the state tells you
             span: how far an activation spreads
-            _k_12 - _k_31: transition rates
-            _K1 - _K3: kinetic balances for reverse rates
+            _k_12 - _k_41: transition rates
+            _K1 - _K4: kinetic balances for reverse rates
         Returns
         -------
         tms_d: dict
@@ -153,10 +156,11 @@ class TmSite:
         self.state = tms_d['_state']
         self._k_12 = tms_d['_k_12']
         self._k_23 = tms_d['_k_23']
-        self._k_31 = tms_d['_k_31']
+        self._k_41 = tms_d['_k_41']
         self._K1 = tms_d['_K1']
         self._K2 = tms_d['_K2']
         self._K3 = tms_d['_K3']
+        self._K4 = tms_d['_K4']
         self._coop = tms_d['_coop']
         return
 
@@ -225,9 +229,20 @@ class TmSite:
     def state(self):
         """Get the current state of the tm site
         
-        Here states are given numerically for convenience. States 0, 1, 
-        and 2 correspond to states B, C, and M respectively (or blocked, 
-        closed, and myosin in prior terminology). 
+        Here states are given numerically for convenience.
+        State designations have changed since multifil version 1.3;
+            From    B-C-M
+                (B)blocked, (C)closed,              (M)myosin
+            To      U-B-C-O
+                (U)unbound, (B)bound,   (C)closed,  (O)open
+
+        State 0 - "unbound" - No Calcium bound to TnC
+        State 1 - "bound"   - Calcium, TnC  and TnI haven't interacted
+        State 2 - "closed"  - Calcium, TnC+TnI, actin site covered
+        State 3 - "open"    - Calcium, TnC+TnI, actin site available
+            State 3-0 -> myosin unbound
+            State 3-1 -> myosin weakly bound
+            State 3-2 -> myosin strongly bound
         """
         return self._state
 
@@ -235,22 +250,22 @@ class TmSite:
     def state(self, new_state):
         """Set the state and thus the binding influence"""
         self._state = new_state
-        self.binding_influence = {0: 0, 1: 0, 2: 1}[new_state]
+        self.binding_influence = {0: 0, 1: 0, 2: 0, 3: 1}[new_state]
 
     @property
     def get_rates(self):
-        if self._concentrations is None:
-            self._update_concentrations()
         return [self._r12(),
                 self._r21(),
                 self._r23(),
                 self._r32(),
-                self._r31(),
-                self._r13()]
+                self._r34(),
+                self._r43(),
+                self._r41(),
+                self._r14()]
 
     def _r12(self):
         """Rate of Ca and TnC association, conditional on [Ca]"""
-        forward = self._k_12 * self.ca * self.ca * self._concentrations['free_tm']
+        forward = self._k_12 * self.ca * self._concentrations['free_tm']
         coop = self._coop if self.subject_to_cooperativity else 1
         forward *= coop
 
@@ -267,8 +282,10 @@ class TmSite:
     def _r23(self):
         """Rate of TnI TnC association"""
         forward = self._k_23
+
         coop = self._coop if self.subject_to_cooperativity else 1
         forward *= coop
+
         return forward
 
     def _r32(self):
@@ -280,23 +297,34 @@ class TmSite:
         # reverse = forward / self._K2
         return reverse
 
-    def _r31(self):
-        """Rate of Ca disassociation induced TnI TnC disassociation
-        """
-        forward = self._k_31 * self._concentrations['bound_tm']
+    def _r34(self):
+        """Rate of tropomyosin movement - uncovering"""
+        forward = self._k_34
+        coop = self._coop if self.subject_to_cooperativity else 1
+        forward *= coop
+
         return forward
 
-    def _r13(self):
-        """Rate of simultaneous Ca binding and TnI TnC association.
+    def _r43(self):
+        """Rate of tropomyosin movement - covering"""
+        return self._k_34 / self._K3
+
+    def _r41(self):
+        """Rate of Actin site covering due to Ca disassociation induced TnI TnC disassociation
+        """
+        forward = self._k_41 * self._concentrations['bound_tm']
+        return forward
+
+    def _r14(self):
+        """Rate of simultaneous Ca binding, TnI TnC association and tropomyosin movement.
         Should be quite low.
         """
-        k_13 = self._k_31 / self._K3
+        k_13 = self._k_41 / self._K4
         reverse = k_13 * self.ca * self.ca * self._concentrations['free_tm']
+
         # reverse *= self._r23()
 
         return reverse
-
-        # return reverse
 
     def _prob(self, rate):
         """ Convert a rate to a probability, based on the current timestep
@@ -328,27 +356,37 @@ class TmSite:
 
     def transition(self):
         """Transition from one state to the next, or back, or don't """
-        self._update_concentrations()
+        self._concentrations = self.parent_tm.parent_thin.parent_lattice.concentrations
         rand = np.random.random()
+
+        f, b = 0, 0     # avoid any chance of an UnboundLocalError
+
+        # Select which rate calculations are relevant
         if self.state == 0:
-            f, b = self._prob(self._r12()), self._prob(self._r13())
-            trans_word = self._forward_backward(f, b, rand)
-            self.state = {"forward": 1, "backward": 2, "none": 0}[trans_word]
+            f, b = self._prob(self._r12()), self._prob(self._r14())
         elif self.state == 1:
             f, b = self._prob(self._r23()), self._prob(self._r21())
-            trans_word = self._forward_backward(f, b, rand)
-            self.state = {"forward": 2, "backward": 0, "none": 1}[trans_word]
         elif self.state == 2:
+            f, b = self._prob(self._r34()), self._prob(self._r32())
+        elif self.state == 3:
             if self.binding_site.state == 1:
                 return  # can't transition if bound
-            f, b = self._prob(self._r31()), self._prob(self._r32())
-            trans_word = self._forward_backward(f, b, rand)
-            self.state = {"forward": 0, "backward": 1, "none": 2}[trans_word]
-        assert self.state in (0, 1, 2), "Tropomyosin state has invalid value"
-        return
+            f, b = self._prob(self._r41()), self._prob(self._r43())
 
-    def _update_concentrations(self):
-        self._concentrations = self.parent_tm.parent_thin.parent_lattice.concentrations
+        # Calculate probabilities and change state accordingly
+        trans_word = self._forward_backward(f, b, rand)
+        self.state = {"forward": (self.state + 1) % 4,
+                      "backward": (self.state + 3) % 4,
+                      "none": self.state}[trans_word]
+
+        # TODO remove state skip
+        if self.state == 2:
+            self.state = {"forward": 3,
+                          "backward": 1}[trans_word]
+
+        assert self.state in (0, 1, 2, 3), "Tropomyosin state has invalid value"
+
+        return
 
 
 class Tropomyosin:

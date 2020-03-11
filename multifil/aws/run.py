@@ -261,7 +261,7 @@ class data_file:
         ad = lambda n,v: self.data_dict[n].append(v)
         ## Calculated components
         radial_force = self.sarc.radial_force()
-        xb_fracs = self.sarc.get_frac_in_states()
+        xb_fracs = self.sarc.get_xb_frac_in_states()
         xb_trans = sum(sum(self.sarc.last_transitions,[]),[])
         act_perm = np.mean(self.sarc.actin_permissiveness)
         thick_d = np.hstack([t.displacement_per_crown()

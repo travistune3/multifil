@@ -349,6 +349,9 @@ class ThinFilament:
     [Squire1981]:http://dx.doi.org/10.1007/978-1-4613-3183-4
     [Gunning2015]:http://dx.doi.org/10.1242/jcs.172502
     """
+
+    VALID_PARAMS = ["af_k"]
+
     def __init__(self, parent_lattice, index, face_orientations, start=0, **af_params):
         """Initialize the thin filament
 
@@ -763,6 +766,10 @@ class ThinFilament:
     def lattice_spacing(self):
         """Return the lattice spacing of the half-sarcomere"""
         return self.parent_lattice.lattice_spacing
+
+    def get_states(self):
+        """Return the numeric states (0,1,2) of each face's cross-bridges"""
+        return [tropomyosin.states for tropomyosin in self.tm]
 
 
 if __name__ == '__main__':

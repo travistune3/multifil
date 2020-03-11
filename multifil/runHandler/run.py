@@ -66,4 +66,4 @@ def run_model(profile):
     end_model = millis.time()
 
     print("model took", end_model - start_model, "seconds")
-    return result
+    return result, exit_code

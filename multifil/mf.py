@@ -411,6 +411,7 @@ class ThickFilament:
         # Remember who you are
         self.index = index
         self.address = ('thick_fil', index)
+
         """Extract crossbridge parameters"""
         mh_params = {}
         if 'mh_params' in mf_params.keys():
