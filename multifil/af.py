@@ -39,14 +39,11 @@ class BindingSite:
 
     def __str__(self):
         """Return the current situation of the binding site"""
-        # noinspection PyListCreation
-        ident = ['Binding Site #' + str(self.index) + ' Info']
-        ident.append(14 * '=')
-        ident.append('State: ' + str(self.state))
+        result = ['Binding Site #' + str(self.index) + ' Info', 14 * '=', 'State: ' + str(self.state)]
         if self.state != 0:
-            ident.append('Forces: ' + str(self.axialforce())
-                         + '/' + str(self.radialforce()))
-        return '\n'.join(ident)
+            result.append('Forces: ' + str(self.axial_force())
+                          + '/' + str(self.radial_force()))
+        return '\n'.join(result)
 
     def to_dict(self):
         """Create a JSON compatible representation of the binding site
@@ -83,7 +80,7 @@ class BindingSite:
         else:
             self.bound_to = bsd['bound_to']
 
-    def axialforce(self, axial_location=None):
+    def axial_force(self, axial_location=None):
         """Return the axial force of the bound cross-bridge, if any
 
         Parameters:
@@ -96,7 +93,7 @@ class BindingSite:
         # Axial force on actin is equal but opposite
         return -self.bound_to.axial_force(tip_axial_loc=axial_location)
 
-    def radialforce(self):
+    def radial_force(self):
         """Radial force vector of the bound cross-bridge, if any
 
         Returns:
@@ -236,7 +233,7 @@ class ThinFace:
         else:
             return self.binding_sites[next_index]
 
-    def radialforce(self):
+    def radial_force(self):
         """What is the radial force this face experiences?
 
         A side note: This was where the attempt to write the model out in
@@ -455,16 +452,16 @@ class ThinFilament:
             k: stiffness of the thin filament
             number_of_nodes: number of binding sites
         """
-        thind = self.__dict__.copy()
-        thind.pop('index')
-        thind.pop('parent_lattice')  # TODO: Spend a P on an id for the lattice
-        thind['thick_faces'] = [tf.address for tf in thind['thick_faces']]
-        thind['thin_faces'] = [tf.to_dict() for tf in thind['thin_faces']]
-        thind['axial'] = list(thind['axial'])
-        thind['rests'] = list(thind['rests'])
-        thind['binding_sites'] = [bs.to_dict() for bs in
-                                  thind['binding_sites']]
-        return thind
+        thin_d = self.__dict__.copy()
+        thin_d.pop('index')
+        thin_d.pop('parent_lattice')  # TODO: Spend a P on an id for the lattice
+        thin_d['thick_faces'] = [tf.address for tf in thin_d['thick_faces']]
+        thin_d['thin_faces'] = [tf.to_dict() for tf in thin_d['thin_faces']]
+        thin_d['axial'] = list(thin_d['axial'])
+        thin_d['rests'] = list(thin_d['rests'])
+        thin_d['binding_sites'] = [bs.to_dict() for bs in
+                                  thin_d['binding_sites']]
+        return thin_d
 
     def from_dict(self, td):
         """ Load values from a thin filament dict. Values read in correspond
@@ -537,13 +534,13 @@ class ThinFilament:
             axial_forces: a list of the XB axial force at each node 
         """
         if axial_locations is None:
-            axial_forces = [site.axialforce() for site in self.binding_sites]
+            axial_forces = [site.axial_force() for site in self.binding_sites]
         else:
-            axial_forces = [site.axialforce(loc) for
+            axial_forces = [site.axial_force(loc) for
                             site, loc in zip(self.binding_sites, axial_locations)]
         return axial_forces
 
-    def axialforce(self, axial_locations=None):
+    def axial_force(self, axial_locations=None):
         """Return a list of axial forces at each binding site node location
 
         This returns the force at each node location (including the z-disk
@@ -566,7 +563,7 @@ class ThinFilament:
     def settle(self, factor):
         """Reduce the total axial force on the system by moving the sites"""
         # Total axial force on each point
-        forces = self.axialforce()
+        forces = self.axial_force()
         # Individual displacements needed to balance force
         isolated = factor * forces / self.k
         isolated[0] *= 2  # First node has spring on only one side
@@ -584,7 +581,7 @@ class ThinFilament:
         Returns
             radial_forces: a list of (f_y, f_z) force vectors
         """
-        radial_forces = [nd.radialforce() for nd in self.binding_sites]
+        radial_forces = [nd.radial_force() for nd in self.binding_sites]
         return radial_forces
 
     def radial_force_of_filament(self):

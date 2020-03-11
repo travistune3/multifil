@@ -657,7 +657,7 @@ class hs:
     def _get_residual(self):
         """Get the residual force at every point in the half-sarcomere"""
         thick_f = np.hstack([t.axialforce() for t in self.thick])
-        thin_f = np.hstack([t.axialforce() for t in self.thin])
+        thin_f = np.hstack([t.axial_force() for t in self.thin])
         mash = np.hstack([thick_f, thin_f])
         return mash
 
