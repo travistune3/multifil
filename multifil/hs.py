@@ -629,7 +629,7 @@ class hs:
 
     def radial_tension(self):
         """The sum of the thick filaments' radial tensions"""
-        return sum([t.radialtension() for t in self.thick])
+        return sum([t.radial_tension() for t in self.thick])
 
     def radial_force(self):
         """The sum of the thick filaments' radial forces, as a (y,z) vector"""
@@ -656,7 +656,7 @@ class hs:
 
     def _get_residual(self):
         """Get the residual force at every point in the half-sarcomere"""
-        thick_f = np.hstack([t.axialforce() for t in self.thick])
+        thick_f = np.hstack([t.axial_force() for t in self.thick])
         thin_f = np.hstack([t.axial_force() for t in self.thin])
         mash = np.hstack([thick_f, thin_f])
         return mash
