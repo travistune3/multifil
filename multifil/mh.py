@@ -359,7 +359,7 @@ class Head:
         self._timestep = 1  # ms
         # Force sensitive detachment information
         self.detach_rate_type = 'original'
-        self.k_0 = 112 * 1e-3
+        self.k_0 = 102 * 1e-3
         # k_T = Boltzmann constant * temperature = (1.381E-23 J/K * 288 K)
         self.k_t = 1.381 * 10 ** -23 * 288 * 10 ** 21  # 10**21 converts J to pN*nM
 
