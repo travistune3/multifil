@@ -779,7 +779,6 @@ class Crossbridge(Head):
                 left = forces[bs_id - 1]
             right = forces[bs_id]
             force = left - right
-            print(force, end=" ")
             # Allow the myosin head to take it from here
             trans = super(Crossbridge, self).transition(distance_to_site,
                                                         actin_state, force=force)
