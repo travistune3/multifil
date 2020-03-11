@@ -427,7 +427,9 @@ class ThinFilament:
         node_index_by_face = np.array([
             [np.nonzero(axial_flat == l_ax_flat)[0][0] for l_ax_flat in face
              ] for face in axial_by_face])
-        # TODO is this using np.tile to broadcast?
+        # V AMA 3-4-2020 V
+        # TODO figure out if this argument to np.tile is correct. Trust in CDW
+        # noinspection PyTypeChecker
         face_index_by_node = np.tile(None, len(axial_flat))
         for face_ind in range(len(node_index_by_face)):
             for node_ind in node_index_by_face[face_ind]:
@@ -631,7 +633,7 @@ class ThinFilament:
         #     total += result[i][1]
         # return active, total
         """Give self, (well, TMs really) a chance to transition states"""
-        return [tm.transition() for tm in self.tm]
+        return [tropomyosin.transition() for tropomyosin in self.tm]
 
     def settle(self, factor):
         """Reduce the total axial force on the system by moving the sites"""
