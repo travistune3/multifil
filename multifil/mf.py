@@ -257,12 +257,12 @@ class ThickFace:
 
     def axial_force(self):
         """Return the total axial force of the face's cross-bridges"""
-        axial = [crossbridge.axialforce() for crossbridge in self.xb]
+        axial = [crossbridge.axial_force() for crossbridge in self.xb]
         return sum(axial)
 
     def radial_tension(self):
         """Sum of the absolute values of radial force for every myosin"""
-        radial = [crossbridge.radialforce() for crossbridge in self.xb]
+        radial = [crossbridge.radial_force() for crossbridge in self.xb]
         radial.append(self.titin_fil.radial_force())
         return sum(radial)
 
@@ -274,7 +274,7 @@ class ThickFace:
         Returns:
             radial_force: sum of radial force of each myosin along the face
         """
-        radial = [crossbridge.radialforce() for crossbridge in self.xb]
+        radial = [crossbridge.radial_force() for crossbridge in self.xb]
         return sum(radial)
 
     def transition(self):
@@ -346,12 +346,12 @@ class ThickFilament:
 
         # ## Crown spacing and thick filament length
         Omitting the bare zone, the crown-decorated region of a half thick-
-        filament is 858 nm long and consists of 60 myosin nodes and one node 
-        at the M-line [(2)][Tanner2007].  As each of the myosin nodes is a 
-        3-myosin crown, each half-thick filament will have 180 myosins, 
-        slightly more than the 150 present in mammalian striated muscle 
-        [(2)][Tanner2007].  The M-line side of the thick filament has an 
-        initial bare zone of from 80 nm [(3)][Higuchi1995] to 58 nm 
+        filament is 858 nm long and consists of 60 myosin nodes and one node
+        at the M-line [(2)][Tanner2007].  As each of the myosin nodes is a
+        3-myosin crown, each half-thick filament will have 180 myosins,
+        slightly more than the 150 present in mammalian striated muscle
+        [(2)][Tanner2007].  The M-line side of the thick filament has an
+        initial bare zone of from 80 nm [(3)][Higuchi1995] to 58 nm
         [(2)][Tanner2007]. We choose to use the 58nm value.
 
         The crowns are on a 43 nm repeat, with three crowns per repeat.

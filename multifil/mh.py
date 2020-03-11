@@ -6,11 +6,11 @@ mh.py - A single myosin head
 Created by Dave Williams on 2010-01-04.
 """
 
+from numpy import pi, sqrt, log, radians
+
 import math as m
 import warnings
-
 import numpy.random as random
-from numpy import pi, sqrt, log, radians
 
 
 class Spring:
@@ -96,7 +96,7 @@ class Spring:
     def bop(self):
         """Bop for a new value, given an exponential energy dist
 
-        A longer explanation is in singlexb/Crossbridge.py
+        A longer explanation is in single xb/Crossbridge.py
         Takes:
             nothing: assumes the spring to be in the unbound state
         Returns:
@@ -161,7 +161,7 @@ class Spring:
 #         # Got this far? Than no transition occurred!
 #         return None
 #
-#     def axialforce(half_sarcomere, tip_location):
+#     def axial_force(half_sarcomere, tip_location):
 #         """Find the axial force a Head generates at a given location
 #
 #         Takes:
@@ -178,7 +178,7 @@ class Spring:
 #         f_x = g_k * (g_len - g_s)
 #         return f_x
 #
-#     def radialforce(half_sarcomere, tip_location):
+#     def radial_force(half_sarcomere, tip_location):
 #         """Find the radial force a Head generates at a given location
 #
 #         Takes:
@@ -399,7 +399,7 @@ class Head:
         # Got this far? Than no transition occurred!
         return None
 
-    def axialforce(self, tip_location):
+    def axial_force(self, tip_location):
         """Find the axial force a Head generates at a given location
 
         Takes:
@@ -419,7 +419,7 @@ class Head:
                1 / g_len * c_k * (c_ang - c_s) * m.sin(c_ang))
         return f_x
 
-    def radialforce(self, tip_location):
+    def radial_force(self, tip_location):
         """Find the radial force a Head generates at a given location
 
         Takes:
@@ -685,7 +685,7 @@ class Crossbridge(Head):
         """String representation of the cross-bridge"""
         out = '__XB_%02d__State_%s__Forces_%d_%d__' % (
             self.index, self.state,
-            self.axialforce(), self.radialforce())
+            self.axial_force(), self.radial_force())
         return out
 
     def to_dict(self):
@@ -773,6 +773,8 @@ class Crossbridge(Head):
             # retrieve the amount of force being exerted based on the state of actin
             thin_filament = self.bound_to.parent_thin
             bs_id = self.bound_to.index
+            # TODO figure out class permissions
+            # noinspection PyProtectedMember
             forces = thin_filament._axial_thin_filament_forces()
             left = 0
             if bs_id != 0:
@@ -790,7 +792,7 @@ class Crossbridge(Head):
                 assert (trans in {'23', '32', None}), 'State mismatch'
         return trans
 
-    def axialforce(self, base_axial_loc=None, tip_axial_loc=None):
+    def axial_force(self, base_axial_loc=None, tip_axial_loc=None):
         """Gather needed information and return the axial force
 
         Parameters:
@@ -805,9 +807,9 @@ class Crossbridge(Head):
         # Else, get the distance to the bound site and run with it
         distance = self._dist_to_bound_actin(base_axial_loc, tip_axial_loc)
         # Allow the myosin head to take it from here
-        return super(Crossbridge, self).axialforce(distance)
+        return super(Crossbridge, self).axial_force(distance)
 
-    def radialforce(self, **kwargs):
+    def radial_force(self, **kwargs):
         """Gather needed information and return the radial force
 
         Parameters:
@@ -821,7 +823,7 @@ class Crossbridge(Head):
         # Else, get the distance to the bound site and run with it
         distance_to_site = self._dist_to_bound_actin()
         # Allow the myosin head to take it from here
-        return super(Crossbridge, self).radialforce(distance_to_site)
+        return super(Crossbridge, self).radial_force(distance_to_site)
 
     @property
     def axial_location(self):
