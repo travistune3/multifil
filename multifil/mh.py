@@ -359,7 +359,8 @@ class Head:
         self._timestep = 1  # ms
         # Force sensitive detachment information
         self.detach_rate_type = 'original'
-        self.k_0 = 102 * 1e-3
+        self.fd_k_0 = 102 * 1e-3
+        self.fd_delta = 1.3
         # k_T = Boltzmann constant * temperature = (1.381E-23 J/K * 288 K)
         self.k_t = 1.381 * 10 ** -23 * 288 * 10 ** 21  # 10**21 converts J to pN*nM
 
@@ -587,10 +588,9 @@ class Head:
             rate = m.sqrt(0.01 * tight_energy) + 0.02
             return float(rate)
         elif self.detach_rate_type == 'fixed':              # Fixed rate - Alison Schroer data
-            return self.k_0
+            return self.fd_k_0
         elif self.detach_rate_type == 'force_sensitive':    # TODO Force sensitive detachment rate
-            delta = 1   # TODO figure out what delta should be
-            return self.k_0 * m.exp((-force * delta) / self.k_t)
+            return self.fd_k_0 * m.exp((-force * self.fd_delta) / self.k_t)
         else:  # rate type is not valid
             raise TypeError("supplied detachment_rate key is not valid")
 
@@ -631,7 +631,7 @@ class Crossbridge(Head):
     # crossbridge can also accept phenotype profiles
     VALID_PARAMS = ['mh_c_ks', 'mh_c_kw', 'mh_c_rs', 'mh_c_rw',
                     'mh_g_ks', 'mh_g_kw', 'mh_g_rs', 'mh_g_rw',
-                    'detach_rate_type', 'mh_k0', 'mh_iso']
+                    'detach_rate_type', 'mh_fd_k0', 'mh_fd_delta', 'mh_iso']
 
     def __init__(self, index, parent_face, thin_face, **mh_params):
         """Set up the cross-bridge
@@ -917,16 +917,23 @@ class Crossbridge(Head):
             self.g.r_s = mh_params.pop(key)
         self.constants[key] = self.g.r_s
 
+        # Force dependent detatchment settings
+
         # rate type TODO decide on detachment rate and remove this parameter
         key = 'detachment_rate'
         if key in mh_params.keys():
             self.detach_rate_type = mh_params.pop(key)
         self.constants[key] = self.detach_rate_type
 
-        key = 'mh_k0'
+        key = 'mh_fd_k0'
         if key in mh_params.keys():
             self.detach_rate_type = mh_params.pop(key)
-        self.constants[key] = self.k_0
+        self.constants[key] = self.fd_k_0
+
+        key = 'mh_fd_delta'
+        if key in mh_params.keys():
+            self.detach_rate_type = mh_params.pop(key)
+        self.constants[key] = self.fd_delta
 
 
 if __name__ == '__main__':
