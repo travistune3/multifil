@@ -631,7 +631,7 @@ class Crossbridge(Head):
     # crossbridge can also accept phenotype profiles
     VALID_PARAMS = ['mh_c_ks', 'mh_c_kw', 'mh_c_rs', 'mh_c_rw',
                     'mh_g_ks', 'mh_g_kw', 'mh_g_rs', 'mh_g_rw',
-                    'detach_rate_type', 'mh_fd_k0', 'mh_fd_delta', 'mh_iso']
+                    'detachment_rate', 'mh_fd_k0', 'mh_fd_delta', 'mh_iso']
 
     def __init__(self, index, parent_face, thin_face, **mh_params):
         """Set up the cross-bridge
@@ -917,7 +917,7 @@ class Crossbridge(Head):
             self.g.r_s = mh_params.pop(key)
         self.constants[key] = self.g.r_s
 
-        # Force dependent detatchment settings
+        # Force dependent detachment settings
 
         # rate type TODO decide on detachment rate and remove this parameter
         key = 'detachment_rate'
