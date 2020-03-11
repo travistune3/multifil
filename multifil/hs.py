@@ -19,6 +19,9 @@ from . import ti
 
 class hs:
     """The half-sarcomere and ways to manage it"""
+    VALID_PARAMS = []
+    for component in [mf.ThickFilament, mf.mh.Crossbridge, af.ThinFilament, ti.Titin]:
+        VALID_PARAMS.extend(component.VALID_PARAMS)
 
     def __init__(self, lattice_spacing=None, z_line=None, poisson=None,
                  actin_permissiveness=None, timestep_len=1,
@@ -117,7 +120,8 @@ class hs:
         """
         # Versioning, to be updated when backwards incompatible changes to the
         # data structure are made, not on release of new features
-        self.version = 1.2
+        self.version = 1.4      # Version 1.4 increases parameter-ization and a constants dictionary
+        #                       # Consistent with regulatory branch (Tropomyosin)
 
         """ ## Handle Kwargs ## """
         # Titin constants
@@ -362,6 +366,8 @@ class hs:
         for myosin in self.thick:
             self.constants['mh'].update(myosin.mh_constants)
 
+        self.debug_info = None
+
     def to_dict(self):
         """Create a JSON compatible representation of the thick filament
 
@@ -426,7 +432,7 @@ class hs:
             thin.from_dict(data)
 
     # noinspection PySimplifyBooleanCheck,PyCallingNonCallable
-    def run(self, time_steps=100, callback=None, bar=True):
+    def run(self, time_steps=100, callback=None, bar=True, every=100):
         """Run the model for the specified number of timesteps
 
         Parameters:
@@ -440,30 +446,67 @@ class hs:
                 is passed, it will be called as f(completed_steps,
                 total_steps, sec_left, sec_passed, process_name).
                 (Defaults to True)
+            every: how many timesteps to update after
         Returns:
             output: the results of the callback after each timestep
+            exit_code: how the simulation was terminated
+                0 - exited successfully
+                1 - general error
+                130 - CTRL-C ~ User Interrupt
         """
         # Callback defaults to the axial force at the M-line
         if callback is None:
-            callback = lambda sarc: sarc.axialforce()
+            callback = self.axialforce
+        # ## logic to handle bar is type(True || False || Function)
+        use_bar = False
+        update_bar = self.print_bar
+        if isinstance(bar, bool):
+            use_bar = bar
+        elif isinstance(bar, type(lambda x: x)):
+            use_bar = True
+            update_bar = bar
         # Create a place to store callback information and note the time_trace
         output = []
         tic = time.time()
         # Run through each timestep
         for i in range(time_steps):
-            self.timestep()
-            output.append(callback(self))
-            # Update us on how it went
-            toc = int((time.time() - tic) / (i + 1) * (time_steps - i - 1))
-            proc_name = mp.current_process().name
-            if bar == True:
-                sys.stdout.write("\n" + proc_name +
-                                 " finished timestep %i of %i, %ih%im%is left" \
-                                 % (i + 1, time_steps, toc / 60 / 60, toc / 60 % 60, toc % 60))
-                sys.stdout.flush()
-            elif type(bar) == type(lambda x: x):
-                bar(i, time_steps, toc, time.time() - tic, proc_name)
-        return output
+            try:
+                self.timestep()
+                output = output.append(callback())
+                # Update us on how it went
+                toc = int((time.time() - tic) / (i + 1) * (time_steps - i - 1))
+                proc_name = mp.current_process().name
+
+                if use_bar and i % every == 0:
+                    update_bar(i=i, timesteps=time_steps,
+                               toc=toc, tic=time.time() - tic,
+                               proc_name=proc_name, output=output)
+            except KeyboardInterrupt:
+                return output, 130
+            except Exception as e:
+                import traceback
+                print("/n")
+                print(e)
+                traceback.print_exc()
+                return output, 1
+        return output, 0
+
+    @staticmethod
+    def print_bar(i, timesteps, toc, proc_name, **bar_kwargs):
+        if 'tic' in bar_kwargs.keys() and bar_kwargs['tic'] < -1:
+            print('Causality has failed')
+        sys.stdout.write("\n" + proc_name +
+                         " finished timestep %i of %i, %ih%im%is left"
+                         % (i + 1, timesteps, toc / 60 / 60, toc / 60 % 60, toc % 60))
+        sys.stdout.flush()
+
+    def log_debug(self, *args):
+        for arg in args:
+            self.debug_info += " " + str(arg)
+
+    def print_debug(self):
+        sys.stdout.write(self.debug_info)
+        sys.stdout.flush()
 
     def timestep(self, current=None):
         """Move the model one step forward in time_trace, allowing the
@@ -474,6 +517,9 @@ class hs:
             self.current_timestep = current
         else:
             self.current_timestep += 1
+
+        # Clear the debug_info
+        self.debug_info = "\ntimestep=" + str(self.current_timestep)
         # Update bound states
         self.last_transitions = [thick.transition() for thick in self.thick]
         # Settle forces

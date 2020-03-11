@@ -357,14 +357,20 @@ class Head:
         self.etaDG = 0.68 * -deltaG     # strong state efficiency: 0.68
         # The time_trace-step, master of all time_trace
         self._timestep = 1  # ms
+        # Force sensitive detachment information
         self.detach_rate_type = 'original'
+        self.k_0 = 112 * 1e-3
+        # k_T = Boltzmann constant * temperature = (1.381E-23 J/K * 288 K)
+        self.k_t = 1.381 * 10 ** -23 * 288 * 10 ** 21  # 10**21 converts J to pN*nM
 
-    def transition(self, bs, ap):
+    def transition(self, bs, ap, force):
         """Transition to a new state (or not)
 
         Takes:
             bs: relative Crown to Actin distance (x,y)
             ap: Actin binding permissiveness, from 0 to 1
+            force: the force being felt by the bound crossbridge, used in the detachment calculation.
+                - force should be passed as None or 0 for unbound myosin heads
         Returns:
             boolean: transition that occurred (as string) or None
         """
@@ -383,7 +389,7 @@ class Head:
                 self.state = "free"
                 return '21'
         elif self.state == "tight":
-            if self._prob(self._r31(bs)) > check:
+            if self._prob(self._r31(bs, force)) > check:
                 self.state = "free"
                 return '31'
             elif (1 - self._prob(self._r32(bs))) < check:
@@ -459,6 +465,7 @@ class Head:
     @timestep_len.setter
     def timestep_len(self, timestep):
         """Set the length of time_trace step used to calculate transitions"""
+        print("changing timestep to", timestep)     # Why would this be called? -AMA 10MAR2020
         self._timestep = timestep
 
     def _prob(self, rate):
@@ -564,12 +571,11 @@ class Head:
             rate = 1
         return float(rate)
 
-    def _r31(self, bs):
+    def _r31(self, bs, force):
         """Per ms rate of unbinding if tightly bound
 
         Takes:
             bs: relative Crown to Actin distance (x,y)
-            rate-type: which rate to use # TODO don't leave it like this forever, we need to decide on a rate
         Returns
             rate: per ms rate of detaching from the binding site
         """
@@ -581,14 +587,10 @@ class Head:
             rate = m.sqrt(0.01 * tight_energy) + 0.02
             return float(rate)
         elif self.detach_rate_type == 'fixed':              # Fixed rate - Alison Schroer data
-            return 112 * 1e-3
+            return self.k_0
         elif self.detach_rate_type == 'force_sensitive':    # TODO Force sensitive detachment rate
-            """ The issue here is currently that 'head' does not have access to Crossbridge variables.
-                        The current code structure and abstraction need to be fiddled with."""
-            raise ModuleNotFoundError("This code has not been implemented yet")
-            # distortion_left = self.axialforce()
-            # distortion_right =
-            # return 0
+            delta = 1   # TODO figure out what delta should be
+            return self.k_0 * m.exp((-force * delta) / self.k_t)
         else:  # rate type is not valid
             raise TypeError("supplied detachment_rate key is not valid")
 
@@ -629,7 +631,7 @@ class Crossbridge(Head):
     # crossbridge can also accept phenotype profiles
     VALID_PARAMS = ['mh_c_ks', 'mh_c_kw', 'mh_c_rs', 'mh_c_rw',
                     'mh_g_ks', 'mh_g_kw', 'mh_g_rs', 'mh_g_rw',
-                    'detach_rate_type']
+                    'detach_rate_type', 'mh_k0', 'mh_iso']
 
     def __init__(self, index, parent_face, thin_face, **mh_params):
         """Set up the cross-bridge
@@ -678,65 +680,6 @@ class Crossbridge(Head):
         # Print kwargs not digested
         for key in mh_params.keys():
             print("Unknown mh_param:", key)
-
-    def _process_params(self, mh_params):
-        """converter definitions"""
-
-        # converter k_strong_state
-        key = 'mh_c_ks'
-        if key in mh_params.keys():
-            self.c.k_s = mh_params.pop(key)
-        self.constants[key] = self.c.k_s
-
-        # converter k_weak_state
-        key = 'mh_c_kw'
-        if key in mh_params.keys():
-            self.c.k_w = mh_params.pop(key)
-        self.constants[key] = self.c.k_w
-
-        # converter rest_weak_state
-        key = 'mh_c_rw'
-        if key in mh_params.keys():
-            self.c.r_w = mh_params.pop(key)
-        self.constants[key] = self.c.r_w
-
-        # converter rest_strong_state
-        key = 'mh_c_rs'
-        if key in mh_params.keys():
-            self.c.r_s = mh_params.pop(key)
-        self.constants[key] = self.c.r_s
-
-        """globular definitions"""
-
-        # globular k_strong_state
-        key = 'mh_g_ks'
-        if key in mh_params.keys():
-            self.g.k_s = mh_params.pop(key)
-        self.constants[key] = self.g.k_s
-
-        # globular k_weak_state
-        key = 'mh_g_kw'
-        if key in mh_params.keys():
-            self.g.k_w = mh_params.pop(key)
-        self.constants[key] = self.g.k_w
-
-        # globular rest_weak_state
-        key = 'mh_g_rw'
-        if key in mh_params.keys():
-            self.g.r_w = mh_params.pop(key)
-        self.constants[key] = self.g.r_w
-
-        # globular rest_strong_state
-        key = 'mh_g_rs'
-        if key in mh_params.keys():
-            self.g.r_s = mh_params.pop(key)
-        self.constants[key] = self.g.r_s
-
-        # rate type
-        key = 'detachment_rate'
-        if key in mh_params.keys():
-            self.detach_rate_type = mh_params.pop(key)
-        self.constants[key] = self.detach_rate_type
 
     def __str__(self):
         """String representation of the cross-bridge"""
@@ -816,7 +759,7 @@ class Crossbridge(Head):
             distance_to_site = (axial_sep, lattice_spacing)
             # Allow the myosin head to take it from here
             trans = super(Crossbridge, self).transition(distance_to_site,
-                                                        actin_state)
+                                                        actin_state, force=None)    # force is not relevant for binding
             # Process changes to bound state
             if trans == '12':
                 self.bound_to = actin_site
@@ -827,9 +770,19 @@ class Crossbridge(Head):
             # Get the distance to the actin site
             distance_to_site = self._dist_to_bound_actin()
             actin_state = self.bound_to.permissiveness
+            # retrieve the amount of force being exerted based on the state of actin
+            thin_filament = self.bound_to.parent_thin
+            bs_id = self.bound_to.index
+            forces = thin_filament._axial_thin_filament_forces()
+            left = 0
+            if bs_id != 0:
+                left = forces[bs_id - 1]
+            right = forces[bs_id]
+            force = left - right
+            print(force, end=" ")
             # Allow the myosin head to take it from here
             trans = super(Crossbridge, self).transition(distance_to_site,
-                                                        actin_state)
+                                                        actin_state, force=force)
             # Process changes to the bound state
             if trans in {'21', '31'}:
                 self.bound_to.bind_to(None)
@@ -910,6 +863,70 @@ class Crossbridge(Head):
     def _get_lattice_spacing(self):
         """Ask our superiors for lattice spacing data"""
         return self.parent_face.lattice_spacing
+
+    def _process_params(self, mh_params):
+        """converter definitions"""
+
+        # converter k_strong_state
+        key = 'mh_c_ks'
+        if key in mh_params.keys():
+            self.c.k_s = mh_params.pop(key)
+        self.constants[key] = self.c.k_s
+
+        # converter k_weak_state
+        key = 'mh_c_kw'
+        if key in mh_params.keys():
+            self.c.k_w = mh_params.pop(key)
+        self.constants[key] = self.c.k_w
+
+        # converter rest_weak_state
+        key = 'mh_c_rw'
+        if key in mh_params.keys():
+            self.c.r_w = mh_params.pop(key)
+        self.constants[key] = self.c.r_w
+
+        # converter rest_strong_state
+        key = 'mh_c_rs'
+        if key in mh_params.keys():
+            self.c.r_s = mh_params.pop(key)
+        self.constants[key] = self.c.r_s
+
+        """globular definitions"""
+
+        # globular k_strong_state
+        key = 'mh_g_ks'
+        if key in mh_params.keys():
+            self.g.k_s = mh_params.pop(key)
+        self.constants[key] = self.g.k_s
+
+        # globular k_weak_state
+        key = 'mh_g_kw'
+        if key in mh_params.keys():
+            self.g.k_w = mh_params.pop(key)
+        self.constants[key] = self.g.k_w
+
+        # globular rest_weak_state
+        key = 'mh_g_rw'
+        if key in mh_params.keys():
+            self.g.r_w = mh_params.pop(key)
+        self.constants[key] = self.g.r_w
+
+        # globular rest_strong_state
+        key = 'mh_g_rs'
+        if key in mh_params.keys():
+            self.g.r_s = mh_params.pop(key)
+        self.constants[key] = self.g.r_s
+
+        # rate type TODO decide on detachment rate and remove this parameter
+        key = 'detachment_rate'
+        if key in mh_params.keys():
+            self.detach_rate_type = mh_params.pop(key)
+        self.constants[key] = self.detach_rate_type
+
+        key = 'mh_k0'
+        if key in mh_params.keys():
+            self.detach_rate_type = mh_params.pop(key)
+        self.constants[key] = self.k_0
 
 
 if __name__ == '__main__':

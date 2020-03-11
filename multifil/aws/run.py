@@ -53,6 +53,8 @@ class manage:
         self.metafile = self._parse_metafile_location(metafile)
         self.meta = self.unpack_meta(self.metafile)
         self.sarc = self.unpack_meta_to_sarc(self.meta)
+        self.sarcfile = None
+        self.datafile = None
         if unattended:
             try:
                 self.run_and_save()
@@ -145,15 +147,15 @@ class manage:
     def run_and_save(self, use_sarc=True):
         """Complete a run according to the loaded meta configuration and save
         results to meta-specified s3 and local locations"""
-        # Initialize data and sarc
-        if use_sarc:
-            self.sarcfile = sarc_file(self.sarc, self.meta, self.working_dir)
-        self.datafile = data_file(self.sarc, self.meta, self.working_dir)
-        # Run away
-        np.random.seed()
-        tic = time.time()
-
         try:
+            # Initialize data and sarc
+            if use_sarc:
+                self.sarcfile = sarc_file(self.sarc, self.meta, self.working_dir)
+            self.datafile = data_file(self.sarc, self.meta, self.working_dir)
+            # Run away
+            np.random.seed()
+            tic = time.time()
+
             for timestep in range(self.meta['timestep_number']):
                 self.sarc.timestep(timestep)
                 self.datafile.append()
@@ -168,11 +170,12 @@ class manage:
             # In the event of general failure or user interrupt,
             # we need to finalize what we have.
             # READ: orphaned files in /tmp/ are disallowed now.
-            data_final_name = self.datafile.finalize()
-            self._copy_file_to_final_location(data_final_name)
-            self.datafile.delete()  # clean up temp files
+            if self.datafile is not None:
+                data_final_name = self.datafile.finalize()
+                self._copy_file_to_final_location(data_final_name)
+                self.datafile.delete()  # clean up temp files
 
-            if use_sarc:
+            if use_sarc and self.sarcfile is not None:
                 sarc_final_name = self.sarcfile.finalize()
                 self._copy_file_to_final_location(sarc_final_name)
                 self.sarcfile.delete()  # clean up temp files
@@ -180,7 +183,7 @@ class manage:
             self._copy_file_to_final_location(self.metafile)
             os.remove(self.metafile)
             os.rmdir(self.working_dir)
-        self._log_it("uploading finished, done with this run")
+            self._log_it("uploading finished, done with this run")
 
     def _run_status(self, timestep, start, every):
         """Report the run status"""
@@ -188,9 +191,9 @@ class manage:
             total_steps = self.meta['timestep_number']
             sec_passed = time.time() - start
             sec_left = int(sec_passed / (timestep + 1) * (total_steps - timestep - 1))
-            self._log_it("finished %i/%i steps, %ih%im%is left" % (
-                timestep + 1, total_steps,
-                sec_left / 60 / 60, sec_left / 60 % 60, sec_left % 60))
+            proc_name = mp.current_process().name
+            self.sarc.print_bar(i=timestep, timesteps=total_steps, toc=sec_left, proc_name=proc_name)
+            self.sarc.print_debug()
 
     @staticmethod
     def _log_it(message):

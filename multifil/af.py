@@ -401,6 +401,7 @@ class ThinFilament:
         node_index_by_face = np.array([[np.nonzero(axial_flat == loc)[0][0]
                                         for loc in face] for face in axial_by_face])
         # V AMA 3-4-2020 V
+        # TODO figure out if this argument to np.tile is correct. Trust in CDW
         # noinspection PyTypeChecker
         face_index_by_node = np.tile(None, len(axial_flat))
         for face_ind in range(len(node_index_by_face)):
