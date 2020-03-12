@@ -193,7 +193,6 @@ class manage:
             sec_left = int(sec_passed / (timestep + 1) * (total_steps - timestep - 1))
             proc_name = mp.current_process().name
             self.sarc.print_bar(i=timestep, timesteps=total_steps, toc=sec_left, proc_name=proc_name)
-            self.sarc.print_debug()
 
     @staticmethod
     def _log_it(message):
