@@ -222,4 +222,4 @@ class cluster:
 
     def node_ip_addresses(self):
         """Print the ip addresses for each node"""
-        [print(instance.ip_address) for instance in nodes]
+        [print(instance.ip_address) for instance in self.nodes]

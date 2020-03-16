@@ -628,7 +628,7 @@ class Crossbridge(Head):
     """A cross-bridge, including status of links to actin sites"""
 
     # kwargs that can be used to edit crossbridge phenotype
-    # crossbridge can also accept phenotype profiles
+    # crossbridge can also accept phenotype managers
     VALID_PARAMS = ['mh_c_ks', 'mh_c_kw', 'mh_c_rs', 'mh_c_rw',
                     'mh_g_ks', 'mh_g_kw', 'mh_g_rs', 'mh_g_rw',
                     'detachment_rate', 'mh_fd_k0', 'mh_fd_delta', 'mh_iso']

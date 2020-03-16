@@ -3,8 +3,8 @@
 """
 metas.py - create the meta file that will configure a run
 
-This was originally included in the run.py file, but has grown compliated
-enough to warrent the creation of a fully separate management system
+This was originally included in the run.py file, but has grown complicated
+enough to warrant the creation of a fully separate management system
 
 metas.emit produces a meta file that describes what we want a run to do: the
 values of the z_line, lattice spacing, and actin permissiveness through the run
@@ -12,13 +12,13 @@ and where it will be stored after completion.
 
 Example
 --------
->>> freq, phase = 10, .8
->>> timetrace = metas.time_trace(.1, 10)
->>> zline = metas.zline_workloop(1250, 25, freq, timetrace)
->>> activation = metas.actin_permissiveness_workloop(freq, phase, 10, 3, 3,
-...  timetrace)
->>> metas.emit('./', None, timetrace, z_line=zline,
-...  actin_permissiveness=activation, write=False, phase=phase, freq=freq)
+# >>> freq, phase = 10, .8
+# >>> timetrace = metas.time_trace(.1, 10)
+# >>> zline = metas.zline_workloop(1250, 25, freq, timetrace)
+# >>> activation = metas.actin_permissiveness_workloop(freq, phase, 10, 3, 3,
+# ...  timetrace)
+# >>> metas.emit('./', None, timetrace, z_line=zline,
+# ...  actin_permissiveness=activation, write=False, phase=phase, freq=freq)
 {'actin_permissiveness': None,
 ...  'actin_permissiveness_func': None,
 ...  'comment': None,
@@ -36,12 +36,11 @@ Example
 Created by Dave Williams on 2017-03-08
 """
 
-import json as json
+from .. import json
 import os
 import uuid
 
 import numpy as np
-from .. import hs
 
 
 # ## Define traces to be used in runs
@@ -123,7 +122,7 @@ def actin_permissiveness_workloop(freq, phase, stim_duration,
         out.append(out[-1])
     while len(out) < (4 * cycle_step_number + number_of_timesteps):
         for i in range(stim_step_number):
-            growth = timestep_length * out[-1] * (growth_rate) * \
+            growth = timestep_length * out[-1] * growth_rate * \
                      (1 - out[-1] / max_signal)
             out.append(out[-1] + growth)
         for i in range(no_stim_step_number):
@@ -180,12 +179,12 @@ def emit(path_local, path_s3, time_trace, poisson=0.0, ls=None, z_line=None,
 
     Returns
     -------
-    rund: dict
+    run_d: dict
         Copy of run dictionary saved to disk as json.
 
     Examples
     --------
-    >>> emit('./', None, .1, 100, write=False)
+#    >>> emit('./', None, .1, 100, write=False)
     {'actin_permissiveness': None,
     ...  'actin_permissiveness_func': None,
     ...  'comment': None,
@@ -202,39 +201,39 @@ def emit(path_local, path_s3, time_trace, poisson=0.0, ls=None, z_line=None,
     # Ensure that the output_dir exists
     os.makedirs(path_local, exist_ok=True)
 
-    rund = {}
+    run_d = {}
     name = str(uuid.uuid1())
     # ## Build dictionary
-    rund['name'] = name
-    rund['comment'] = comment
-    rund['path_local'] = path_local
-    rund['path_s3'] = path_s3
-    rund['poisson_ratio'] = poisson
-    rund['lattice_spacing'] = ls
-    rund['z_line'] = z_line
-    rund['actin_permissiveness'] = actin_permissiveness
-    rund['hs_params'] = constants
-    rund['timestep_length'] = np.diff(time_trace)[0]
-    rund['timestep_number'] = len(time_trace)
+    run_d['name'] = name
+    run_d['comment'] = comment
+    run_d['path_local'] = path_local
+    run_d['path_s3'] = path_s3
+    run_d['poisson_ratio'] = poisson
+    run_d['lattice_spacing'] = ls
+    run_d['z_line'] = z_line
+    run_d['actin_permissiveness'] = actin_permissiveness
+    run_d['hs_params'] = constants
+    run_d['timestep_length'] = np.diff(time_trace)[0]
+    run_d['timestep_number'] = len(time_trace)
     # ## Include kwargs
     for k in kwargs:
-        rund[k] = kwargs[k]
+        run_d[k] = kwargs[k]
     # # ## Ensure vanilla JSON compatibility - vanilla json is not able to read/write numpy arrays
-    for key, value in rund.items():
+    for key, value in run_d.items():
         if isinstance(value, np.ndarray):
-            rund[key] = list(value)
+            run_d[key] = list(value)
     # ## Write out the run description
     if write is True:
         try:
             output_filename = os.path.join(path_local, name + '.meta.json')
             with open(output_filename, 'w') as metafile:
-                json.dump(rund, metafile, indent=4)
+                json.dump(run_d, metafile, indent=4)
         except TypeError as e:
-            for key, value in rund.items():
+            for key, value in run_d.items():
                 print(key, type(value))
             print()
             print("Probably, one of the above types is not json compatible,"
                   "\nsee bottom of following error message for more info")
             print()
             raise e
-    return rund
+    return run_d

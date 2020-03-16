@@ -24,15 +24,15 @@ def stiff_torsional_spring(ms_p_ts=0.5, duration=500):
         time
                                                     )
 
-    '''init params freq=25, phase=0.1, stim_duration=20, influx_time=2, half_life=10, time=time'''
+    '''init params freq=25, phase=0.1, stim_duration=20, influx_time=2, half_life=10, millis=millis'''
     '''first twitch: 5, 10, 50, 2, 10'''
     '''positive workloop params: 25, # freq in Hz, 0.1, # phase mean, 10, # stimulus duration in ms
-        2, # time it takes for ca to go from 10 to 90% of influx level, 10, # half life of Ca decay, time_trace'''
+        2, # millis it takes for ca to go from 10 to 90% of influx level, 10, # half life of Ca decay, time_trace'''
     ap = metas.actin_permissiveness_workloop(
         1, # freq in Hz 
         0.01, # phase mean
         20, # stimulus duration in ms
-        2, # time it takes for ca to go from 10 to 90% of influx level
+        2, # millis it takes for ca to go from 10 to 90% of influx level
         50, # half life of Ca decay 
         time)
     

@@ -129,7 +129,7 @@ class hs:
         valid_ti_params = ti.Titin.VALID_PARAMS
         if 'ti_iso' in kwargs.keys():
             for param in valid_ti_params:
-                assert param not in kwargs.keys(), "ti_iso cannot be set at the same time as ti parameters"
+                assert param not in kwargs.keys(), "ti_iso cannot be set at the same millis as ti parameters"
             ti_params = {"ti_iso": kwargs.pop('ti_iso')}
         else:
             ti_params = {}
@@ -149,7 +149,7 @@ class hs:
         valid_mh_params = mf.mh.Crossbridge.VALID_PARAMS
         if 'mh_iso' in kwargs.keys():
             for param in valid_mh_params:
-                assert param not in kwargs.keys(), "mh_iso cannot be set at the same time as mh parameters"
+                assert param not in kwargs.keys(), "mh_iso cannot be set at the same millis as mh parameters"
             mf_params = {"mh_iso": kwargs.pop('mh_iso')}
         else:
             mh_params = {}

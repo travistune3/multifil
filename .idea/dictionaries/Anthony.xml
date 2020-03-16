@@ -3,12 +3,15 @@
     <words>
       <w>actin</w>
       <w>auxetic</w>
+      <w>cpus</w>
       <w>crossbridge</w>
       <w>crossbridges</w>
       <w>egelman</w>
       <w>filcenter</w>
       <w>fmod</w>
+      <w>forcevelocity</w>
       <w>frac</w>
+      <w>fracs</w>
       <w>higuchi</w>
       <w>hookean</w>
       <w>isoform</w>
@@ -16,6 +19,7 @@
       <w>konstant</w>
       <w>locs</w>
       <w>mathematica</w>
+      <w>metafile</w>
       <w>millman</w>
       <w>motil</w>
       <w>multifil</w>
@@ -28,18 +32,22 @@
       <w>powerstroke</w>
       <w>proc</w>
       <w>sarc</w>
+      <w>sarcfile</w>
       <w>sarcomere</w>
       <w>schroer</w>
       <w>sqrt</w>
+      <w>stim</w>
       <w>tanh</w>
       <w>thickface</w>
       <w>thusly</w>
       <w>timestep</w>
       <w>timesteps</w>
+      <w>timetrace</w>
       <w>titin</w>
       <w>tropomyosin</w>
       <w>versioning</w>
       <w>woodhead</w>
+      <w>workloop</w>
       <w>zline</w>
     </words>
   </dictionary>

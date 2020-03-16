@@ -28,6 +28,6 @@ def plot_input_traces(time, length, ap, title=None):
     axes[0].set(ylabel='hs length (nm)', title=title)
     axes[1].plot(time, ap)
     axes[1].set(ylabel='actin permissiveness',
-                xlabel='time (ms)')
+                xlabel='millis (ms)')
     plt.tight_layout()
     plt.show()
