@@ -253,15 +253,15 @@ class TmSite:
         self.binding_influence = {0: 0, 1: 0, 2: 0, 3: 1}[new_state]
 
     @property
-    def get_rates(self):
-        return [self._r12(),
-                self._r21(),
-                self._r23(),
-                self._r32(),
-                self._r34(),
-                self._r43(),
-                self._r41(),
-                self._r14()]
+    def rates(self):
+        return {'tm_rate_12': self._r12(),
+                'tm_rate_21': self._r21(),
+                'tm_rate_23': self._r23(),
+                'tm_rate_32': self._r32(),
+                'tm_rate_34': self._r34(),
+                'tm_rate_43': self._r43(),
+                'tm_rate_41': self._r41(),
+                'tm_rate_14': self._r14()}
 
     def _r12(self):
         """Rate of Ca and TnC association, conditional on [Ca]"""
@@ -386,7 +386,7 @@ class TmSite:
 
         assert self.state in (0, 1, 2, 3), "Tropomyosin state has invalid value"
 
-        return
+        return trans_word
 
 
 class Tropomyosin:
@@ -484,6 +484,21 @@ class Tropomyosin:
         """States of the contained TmSites (for monitoring)"""
         return [site.state for site in self.sites]
 
+    @property
+    def rates(self):
+        """Average rates of the contained TmSites (for monitoring)"""
+        rates = None
+        for site in self.sites:
+            if rates is None:
+                rates = site.rates
+            else:
+                for key, value in site.rates.items():
+                    rates[key] += value
+        for key in rates:
+            rates[key] /= len(self.sites)
+
+        return rates
+
     def transition(self):
         """Chunk through all binding sites, transition if need be"""
 
@@ -493,10 +508,11 @@ class Tropomyosin:
         # for site in remaining_sites:
         #     site.transition()
         """Activation spread method - 2 Original Cooperation"""
-        for site in self.sites:
-            site.transition()
+        transitions = [site.transition() for site in self.sites]
         # Spread activation
-        self._spread_activation()
+        self._spread_activation()   # TODO figure out how to handle these transitions
+
+        return transitions
 
     def _roll_for_activation(self, all_sites):
         """"Spread activation along the filament"""

@@ -9,29 +9,31 @@ produced by setup_run.emit and uses it to configure a sarcomere
 
 run.sarc_file manages recording of complete sarcomere logs to a local file
 
-run.data_file manages recording abreviated data logs to a local file
+run.data_file manages recording abbreviated data logs to a local file
 
-run.s3 maintains a persistant s3 connection through all of this
+run.s3 maintains a persistent s3 connection through all of this
 
 Created by Dave Williams on 2016-07-02
 """
-
-import sys
+from .. import json
+import multiprocessing as mp
 import os
 import shutil
 import subprocess
-import time
-import ujson as json
-import multiprocessing as mp
+import sys
+import time as millis
+
 import boto
 import numpy as np
 
 from .. import hs
 
-## Manage a local run
+
+# ## Manage a local run
 class manage:
-    """Run, now with extra objor flavor"""
-    def __init__(self, metafile, unattended=True):
+    """Run, now with extra object flavor"""
+
+    def __init__(self, metafile, unattended=True, use_sarc=True):
         """Create a managed instance of the sarc, optionally running it
 
         Parameters
@@ -44,37 +46,44 @@ class manage:
             Whether to complete the run without further intervention or treat
             as an interactive session.
         """
-        self.s3 = s3()
-        self.uuid = metafile.split('/')[-1].split('.')[0]
+        self.s3 = None  # s3()  # todo - generalize aws startup logic, currently gutted (see line 130)
+        self.uuid = os.path.basename(metafile).split('.')[0]
         self.working_dir = self._make_working_dir(self.uuid)
         self.metafile = self._parse_metafile_location(metafile)
         self.meta = self.unpack_meta(self.metafile)
         self.sarc = self.unpack_meta_to_sarc(self.meta)
+        self.use_sarc = use_sarc
+        self.sarcfile = None
+        self.datafile = None
+        self.zip_filename = None
+        self.working_filename = None
         if unattended:
             try:
                 self.run_and_save()
-            except:
+            except Exception as e:
                 mp.current_process().terminate()
+                print(e)
 
     @staticmethod
     def _make_working_dir(name):
         """Create a temporary working directory and return the name"""
-        wdname = '/tmp/'+name
-        os.makedirs(wdname, exist_ok=True)
-        return wdname
+        wd_name = '/tmp/' + name + "/"
+        os.makedirs(wd_name, exist_ok=True)
+        return wd_name
 
     def _parse_metafile_location(self, metafile):
         """Parse the passed location, downloading the metafile if necessary"""
         if not os.path.exists(metafile):
-            return self.s3.pull_from_s3(metafile, self.working_dir)
+            raise FileNotFoundError("meta file not found")
+            # return half_sarcomere.s3.pull_from_s3(metafile, half_sarcomere.working_dir)
         else:
-            mfn = '/'+metafile.split('/')[-1]
-            return shutil.copyfile(metafile, self.working_dir+mfn)
+            mfn = '/' + os.path.basename(metafile)
+            return shutil.copyfile(metafile, self.working_dir + mfn)
 
     @staticmethod
-    def unpack_meta(metafilename):
+    def unpack_meta(meta_filename):
         """Unpack the local meta file to a dictionary"""
-        with open(metafilename, 'r') as metafile:
+        with open(meta_filename, 'r') as metafile:
             meta = json.load(metafile)
         return meta
 
@@ -87,21 +96,27 @@ class manage:
         none_if_list = lambda s: None if type(meta[s]) is list else meta[s]
         lattice_spacing = none_if_list('lattice_spacing')
         z_line = none_if_list('z_line')
-        actin_permissiveness = none_if_list('actin_permissiveness')
+        pCa = none_if_list('pCa')
+
+        # handle no kwargs case
+        hs_params = {} if meta['hs_params'] is None else meta['hs_params']
+
         # Time dependent values
         time_dep_dict = {}
         for prop in ['z_line', 'actin_permissiveness']:
             if type(meta[prop]) is list:
                 time_dep_dict[prop] = meta[prop]
+
         # Instantiate sarcomere
         sarc = hs.hs(
-            lattice_spacing = lattice_spacing,
-            z_line = z_line,
-            poisson = meta['poisson_ratio'],
-            actin_permissiveness = actin_permissiveness,
-            timestep_len = meta['timestep_length'],
-            time_dependence = time_dep_dict,
-            )
+            lattice_spacing=lattice_spacing,
+            z_line=z_line,
+            poisson=meta['poisson_ratio'],
+            pCa=pCa,
+            timestep_len=meta['timestep_length'],
+            time_dependence=time_dep_dict,
+            **hs_params
+        )
         return sarc
 
     def _copy_file_to_final_location(self, temp_full_fn, final_loc=None):
@@ -118,9 +133,11 @@ class manage:
         file_name = '/' + temp_loc.split('/')[-1]
         # Upload to S3
         if self.meta['path_s3'] is not None:
-            s3_loc = self.meta['path_s3']
-            self.s3.push_to_s3(temp_loc, s3_loc)
-        # Store in final local path
+            # TODO see line 50
+            raise BrokenPipeError("AWS services are not currently setup for multifil.")
+            # s3_loc = self.meta['path_s3']
+            # self.s3.push_to_s3(temp_loc, s3_loc)
+        # Store in final local path specified in the meta settings
         if self.meta['path_local'] is not None:
             local_loc = os.path.abspath(os.path.expanduser(
                 self.meta['path_local'])) + file_name
@@ -128,72 +145,109 @@ class manage:
                 shutil.copyfile(temp_loc, local_loc)
             except shutil.SameFileError:
                 pass
-        # Save to passes local location
+        # Save to passed local location - second directory
         if final_loc is not None:
-            local_loc = os.path.abspath(os.path.expanduser(location)) \
-                    + file_name
+            local_loc = os.path.abspath(os.path.expanduser(final_loc)) \
+                        + file_name
             shutil.copyfile(temp_loc, local_loc)
 
     def run_and_save(self):
         """Complete a run according to the loaded meta configuration and save
         results to meta-specified s3 and local locations"""
-        # Initialize data and sarc
-        self.sarcfile = sarc_file(self.sarc, self.meta, self.working_dir)
-        self.datafile = data_file(self.sarc, self.meta, self.working_dir)
-        # Run away
-        np.random.seed()
-        tic = time.time()
-        for timestep in range(self.meta['timestep_number']):
-            self.sarc.timestep(timestep)
-            self.datafile.append()
-            self.sarcfile.append()
-            # Update on how it is going
-            self._run_status(timestep, tic, 100)
-        # Finalize and save files to final locations
-        self._log_it("model finished, uploading")
-        self._copy_file_to_final_location(self.metafile)
-        data_final_name = self.datafile.finalize()
-        self._copy_file_to_final_location(data_final_name)
-        self.datafile.delete() # clean up temp files
-        sarc_final_name = self.sarcfile.finalize()
-        self._copy_file_to_final_location(sarc_final_name)
-        self.sarcfile.delete() # clean up temp files
-        self._log_it("uploading finished, done with this run")
+        exitcode = None
+        result = None
+
+        try:
+            # Initialize data and sarc
+            if self.use_sarc:
+                self.sarcfile = sarc_file(self.sarc, self.meta, self.working_dir)
+            self.datafile = data_file(self.sarc, self.meta, self.working_dir)
+            # Run away
+            # noinspection PyArgumentList
+            np.random.seed()
+            tic = millis.time()
+
+            for timestep in range(self.meta['timestep_number']):
+                self.sarc.timestep(timestep)
+                self.datafile.append()
+                if self.use_sarc:
+                    self.sarcfile.append()
+                # Update on how it is going
+                self._run_status(timestep, tic, 100)
+
+            # Finalize and save files to final locations
+            self._log_it("model finished, uploading")
+        except KeyboardInterrupt:
+            exitcode = 130
+        except Exception as e:
+            import traceback
+            print("/n")
+            print(e)
+            traceback.print_exc()
+        finally:    # <- executed normally but also in the event of failure
+            # In the event of general failure or user interrupt,
+            # we need to finalize what we have.
+            # READ: orphaned files in /tmp/ are disallowed now.
+            if self.datafile is not None:
+                result = self.datafile.data_dict.copy()
+                data_final_name = self.datafile.finalize()
+                self._copy_file_to_final_location(data_final_name)
+                self.datafile.delete()  # clean up temp files
+
+            if self.use_sarc and self.sarcfile is not None:
+                sarc_final_name = self.sarcfile.finalize()
+                self._copy_file_to_final_location(sarc_final_name)
+                self.sarcfile.delete()  # clean up temp files
+
+            self._copy_file_to_final_location(self.metafile)
+            os.remove(self.metafile)
+
+            os.rmdir(self.working_dir)
+            self._log_it("uploading finished, done with this run")
+            return result, exitcode
 
     def _run_status(self, timestep, start, every):
         """Report the run status"""
-        if timestep%every==0 or timestep==0:
+        if timestep % every == 0 or timestep == 0:
             total_steps = self.meta['timestep_number']
-            sec_passed = time.time()-start
-            sec_left = int(sec_passed/(timestep+1)*(total_steps-timestep-1))
-            self._log_it("finished %i/%i steps, %ih%im%is left"%(
-                timestep+1, total_steps,
-                sec_left/60/60, sec_left/60%60, sec_left%60))
+            sec_passed = millis.time() - start
+            sec_left = int(sec_passed / (timestep + 1) * (total_steps - timestep - 1))
+            proc_name = mp.current_process().name
+            self.sarc.print_bar(i=timestep, time_steps=total_steps, toc=sec_left, proc_name=proc_name)
 
     @staticmethod
     def _log_it(message):
         """Print message to sys.stdout"""
         sys.stdout.write("run.py " + mp.current_process().name +
-                " ## " + message + "\n")
+                         " # ## " + message + "\n")
         sys.stdout.flush()
 
-## File management
+
+# ## File management
 class sarc_file:
+
     def __init__(self, sarc, meta, working_dir):
         """Handles recording a sarcomere dict to disk at each timestep"""
         self.sarc = sarc
         self.meta = meta
         self.working_directory = working_dir
-        sarc_name = '/'+meta['name']+'.sarc.json'
+        sarc_name = '/' + meta['name'] + '.sarc.json'
         self.working_filename = self.working_directory + sarc_name
-        self.working_file = open(self.working_filename, 'a')
-        self.next_write = '[\n'
-        self.append(True)
+
+        try:
+            self.working_file = open(self.working_filename, 'a')
+            self.next_write = '[\n'
+            self.append(True)
+        except Exception as e:
+            print(e)
+
+        self.zip_filename = None
+        self.print_zip = False
 
     def append(self, first=False):
         """Add the current timestep sarcomere to the sarc file"""
         if not first:
-            self.next_write +=',\n'
+            self.next_write += ',\n'
         self.next_write += json.dumps(self.sarc.to_dict(), sort_keys=True)
         self.working_file.write(self.next_write)
         self.next_write = ''
@@ -202,17 +256,23 @@ class sarc_file:
         """Close the current sarcomere file for proper JSON formatting"""
         self.working_file.write('\n]')
         self.working_file.close()
-        time.sleep(1)
-        self.zip_filename = self.meta['name']+'.sarc.tar.gz'
+        millis.sleep(1)
+        self.zip_filename = self.meta['name'] + '.sarc.tar.gz'
         cp = subprocess.run(['tar', 'czf', self.zip_filename,
                              '-C', self.working_directory,
                              self.working_filename])
+        if self.print_zip:
+            print(cp)
         os.remove(self.working_filename)
         return self.zip_filename
 
     def delete(self):
         """Delete the sarc zip file from disk"""
-        os.remove(self.zip_filename)
+        try:
+            # print("removing zip filename\n\t", half_sarcomere.zip_filename, "\n")
+            os.remove(self.zip_filename)
+        except FileNotFoundError:
+            print("Error removing temp file, check C:\/tmp for", self.zip_filename)
 
 
 class data_file:
@@ -221,8 +281,10 @@ class data_file:
         self.sarc = sarc
         self.meta = meta
         self.working_directory = working_dir
+        self.working_filename = None
         self.data_dict = {
             'name': self.meta['name'],
+            'constants': self.sarc.constants,
             'timestep_length': self.sarc.timestep_len,
             'timestep': [],
             'z_line': [],
@@ -250,25 +312,42 @@ class data_file:
             'thin_displace_max': [],
             'thin_displace_min': [],
             'thin_displace_std': [],
+            "coop": [],
+            "tm_fraction_bound": [],
+            "ca": [],
+            "tm_unbound": [],
+            "tm_bound": [],
+            "tm_closed": [],
+            "tm_open": [],
+            'tm_rate_12': [],
+            'tm_rate_21': [],
+            'tm_rate_23': [],
+            'tm_rate_32': [],
+            'tm_rate_34': [],
+            'tm_rate_43': [],
+            'tm_rate_41': [],
+            'tm_rate_14': [],
         }
 
     def append(self):
         """Digest out the non-vector values we want to record for each
         timestep and append them to the data_dict. This is called at each
-        timestep to build a dict for inclusion in a pandas dataframe.
+        timestep to build a dict for inclusion in a pandas DataFrame.
         """
-        ## Lambda helpers
-        ad = lambda n,v: self.data_dict[n].append(v)
-        ## Calculated components
+        # ## Lambda helpers
+        ad = lambda n, v: self.data_dict[n].append(v)
+        # ## Calculated components
         radial_force = self.sarc.radial_force()
         xb_fracs = self.sarc.get_xb_frac_in_states()
-        xb_trans = sum(sum(self.sarc.last_transitions,[]),[])
+        xb_trans = sum(sum(self.sarc.last_transitions, []), [])
+        tm_fracs = self.sarc.get_tm_frac_in_states()
+        tm_rates = self.sarc.tm_rates()
         act_perm = np.mean(self.sarc.actin_permissiveness)
         thick_d = np.hstack([t.displacement_per_crown()
                              for t in self.sarc.thick])
         thin_d = np.hstack([t.displacement_per_node()
                             for t in self.sarc.thin])
-        ## Dictionary work
+        # ## Dictionary work
         ad('timestep', self.sarc.current_timestep)
         ad('z_line', self.sarc.z_line)
         ad('lattice_spacing', self.sarc.lattice_spacing)
@@ -295,10 +374,24 @@ class data_file:
         ad('thin_displace_max', np.max(thin_d))
         ad('thin_displace_min', np.min(thin_d))
         ad('thin_displace_std', np.std(thin_d))
+        ad("tm_fraction_bound", self.sarc.tnca_count / self.sarc.tn_total)
+        ad("ca", self.sarc.c_ca)
+        ad("tm_unbound", tm_fracs[0])
+        ad("tm_bound", tm_fracs[1])
+        ad("tm_closed", tm_fracs[2])
+        ad("tm_open", tm_fracs[3])
+        ad('tm_rate_12', tm_rates['tm_rate_12'])
+        ad('tm_rate_21', tm_rates['tm_rate_21'])
+        ad('tm_rate_23', tm_rates['tm_rate_23'])
+        ad('tm_rate_32', tm_rates['tm_rate_32'])
+        ad('tm_rate_34', tm_rates['tm_rate_34'])
+        ad('tm_rate_43', tm_rates['tm_rate_43'])
+        ad('tm_rate_41', tm_rates['tm_rate_41'])
+        ad('tm_rate_14', tm_rates['tm_rate_14'])
 
     def finalize(self):
         """Write the data dict to the temporary file location"""
-        data_name = '/'+self.meta['name']+'.data.json'
+        data_name = '/' + self.meta['name'] + '.data.json'
         self.working_filename = self.working_directory + data_name
         with open(self.working_filename, 'w') as datafile:
             json.dump(self.data_dict, datafile, sort_keys=True)
@@ -307,6 +400,7 @@ class data_file:
     def delete(self):
         """Delete the data file from disk"""
         try:
+            # print("removing working filename\n\t", half_sarcomere.working_filename, "\n")
             os.remove(self.working_filename)
         except FileNotFoundError:
             print("File not created yet")
@@ -339,7 +433,7 @@ class s3:
         Parameters
         ----------
         name: string
-            bucket/keyname to download. can be prefixed by 's3://', '/', or
+            bucket/key-name to download. can be prefixed by 's3://', '/', or
             by nothing
         local: string
             local directory to download key into, defaults to current directory
@@ -350,14 +444,14 @@ class s3:
 
         Examples
         --------
-        >>>pull_from_s3('s3://just_a_test_bucket/test')
-        >>>os.remove('test')
-        >>>pull_from_s3('just_a_test_bucket/test')
-        >>>os.remove('test')
+        # >>>pull_from_s3('s3://just_a_test_bucket/test')
+        # >>>os.remove('test')
+        # >>>pull_from_s3('just_a_test_bucket/test')
+        # >>>os.remove('test')
         """
         # Parse name
-        bucket_name = [n for n in name.split('/') if len(n)>3][0] # rm s3:// & /
-        key_name = name[len(bucket_name)+name.index(bucket_name):]
+        bucket_name = [n for n in name.split('/') if len(n) > 3][0]  # rm s3:// & /
+        key_name = name[len(bucket_name) + name.index(bucket_name):]
         file_name = key_name.split('/')[-1]
         # Connect to bucket
         bucket = self._get_bucket(bucket_name)
@@ -367,10 +461,10 @@ class s3:
         local = os.path.abspath(os.path.expanduser(local))
         os.makedirs(local, exist_ok=True)
         # Download key
-        downloaded_name = local+'/'+file_name
+        downloaded_name = local + '/' + file_name
         key.get_contents_to_filename(downloaded_name)
         if key.size != os.stat(downloaded_name).st_size:
-            print("Size mismatch, downloading again for %s: "%downloaded_name)
+            print("Size mismatch, downloading again for %s: " % downloaded_name)
             key.get_contents_to_filename(downloaded_name)
         return downloaded_name
 
@@ -394,15 +488,80 @@ class s3:
         """
         # Parse names
         file_name = local.split('/')[-1]
-        bucket_name = [n for n in remote.split('/') if len(n)>3][0]
-        key_name = remote[len(bucket_name)+remote.index(bucket_name):]
-        if len(key_name)==0 or key_name[-1] != '/':
+        bucket_name = [n for n in remote.split('/') if len(n) > 3][0]
+        key_name = remote[len(bucket_name) + remote.index(bucket_name):]
+        if len(key_name) == 0 or key_name[-1] != '/':
             key_name += '/'
         # Parse bucket and folders
         bucket = self._get_bucket(bucket_name)
-        key = bucket.new_key(key_name+file_name)
+        key = bucket.new_key(key_name + file_name)
         key.set_contents_from_filename(local)
         if key.size != os.stat(local).st_size:
-            print("Size mismatch, uploading again for %s: "%local)
+            print("Size mismatch, uploading again for %s: " % local)
             key.set_contents_from_filename(local)
         return
+
+
+# ## Manage multiple local runs
+class manage_async:
+    """This class allows the user to run concurrent local simulations using a multi-core cpu"""
+    #   Modern computers typically have at least 2 physical cores in their cpu
+    #       able to perform processes truly asynchronously, given that they don't need to exchange
+    #       information to complete these processes. If they require info exchange, that is also possible
+    #       to facilitate, but may end up requiring some wait time to ensure the processes complete correctly.
+    #   In addition to physical cores, modern cpus have a hardware-based trick called hyper-threading
+    #       that allows them to switch between two things quickly enough that they get very close
+    #       to executing two processes at once.
+    #   This means that a 4 core cpu with hyper-threading can have 8 things going on at the same time.
+
+    def __init__(self, meta_files, unattended=True, use_sarc=True, force=False):
+        """Create a managed batch of instances of sarc objects, optionally running them
+
+        Parameters
+        ----------
+        meta_files: list of strings
+            A list of the locations of the metafile describing the run to be worked
+            through. Can be local or on S3. Assumed to be on S3 if the local
+            file does not exist.
+        unattended: boolean
+            Whether to complete the run without further intervention or treat
+            as an interactive session.
+        """
+        max_threads = max(2, int(0.75 * mp.cpu_count()))
+        if len(meta_files) >= mp.cpu_count():
+            print("More instances than threads,", end=" ")
+            if not force:
+                print("these files will not be run:")
+                for meta_file in meta_files[max_threads:]:
+                    print(meta_file)
+                meta_files = meta_files[0:max_threads]
+            else:
+                print("forcing anyway."
+                      "\nBehavior will be dependent on python's built in class multiprocessing.")
+        elif len(meta_files) > max_threads:
+            print("More that 75% of available threads will be used for simulations, proceeding anyway.")
+
+        self.managers = []
+        for meta_file in meta_files:
+            self.managers.append(manage(meta_file, unattended, use_sarc))
+
+        self.processes = []
+        for manager in self.managers:
+            self.processes.append(mp.Process(target=manager.run_and_save, args=()))
+
+        if unattended:
+            try:
+                self.run_and_save()
+            except Exception as e:
+                mp.current_process().terminate()
+                print(e)
+
+    def run_and_save(self):
+        start = millis.time()
+        for process in self.processes:
+            process.start()
+        for process in self.processes:
+            process.join()
+
+        end = millis.time()
+        print(end - start, "seconds")

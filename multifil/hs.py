@@ -445,6 +445,7 @@ class hs:
         # set act_perm as mean since prop access returns values at every point
         sd['actin_permissiveness'] = np.mean(self.actin_permissiveness)
         sd['thick'] = [t.to_dict() for t in sd['thick']]
+        sd['titin'] = [t.to_dict() for t in sd['titin']]
         sd['thin'] = [t.to_dict() for t in sd['thin']]
         return sd
 
@@ -481,8 +482,8 @@ class hs:
         for data, thin in zip(sd['thin'], self.thin):
             thin.from_dict(data)
 
-    def run(self, time_steps=100, callback=None, bar=True, every=1):
-        """Run the model for the specified number of timesteps
+    def run(self, time_steps=100, callback=None, bar=True, every=100):
+        """Run the model for the specified number of time_steps
 
         Parameters:
             time_steps: number of time steps to run the model for (100)
@@ -493,9 +494,9 @@ class hs:
             bar: progress bar control,False means don't display, True
                 means give us the basic progress reports, if a function
                 is passed, it will be called as f(completed_steps,
-                total_steps, sec_left, sec_passed, process_name, output).
+                total_steps, sec_left, sec_passed, process_name).
                 (Defaults to True)
-            every: how many timesteps to update after
+            every: how many time_steps to update after
         Returns:
             output: the results of the callback after each timestep
             exit_code: how the simulation was terminated
@@ -505,8 +506,7 @@ class hs:
         """
         # Callback defaults to the axial force at the M-line
         if callback is None:
-            callback = self.tm_report
-
+            callback = self.axial_force
         # ## logic to handle bar is type(True || False || Function)
         use_bar = False
         update_bar = self.print_bar
@@ -516,13 +516,13 @@ class hs:
             use_bar = True
             update_bar = bar
         # Create a place to store callback information and note the time
-        output = {}
+        output = []
         tic = time.time()
         # Run through each timestep
         for i in range(time_steps):
             try:
                 self.timestep()
-                output = self._append(callback(), output)
+                output = output.append(callback())
                 # Update us on how it went
                 toc = int((time.time() - tic) / (i + 1) * (time_steps - i - 1))
                 proc_name = mp.current_process().name
@@ -549,28 +549,6 @@ class hs:
                          " finished timestep %i of %i, %ih%im%is left"
                          % (i + 1, time_steps, toc / 60 / 60, toc / 60 % 60, toc % 60))
         sys.stdout.flush()
-
-    @staticmethod
-    def tm_bar(i, time_steps, toc, proc_name, output, **bar_kwargs):
-        hs.print_bar(i=i, time_steps=time_steps, toc=toc, proc_name=proc_name, **bar_kwargs)
-        sys.stdout.write("\n\t\t\t\t\t\t\t")
-        for key in ["tm_unbound", "tm_bound", "tm_closed", "tm_open"]:
-            if key in output.keys():
-                fraction = output[key][i]
-                fraction *= 10000
-                fraction = int(fraction)
-                fraction = fraction / 100.0
-                sys.stdout.write("\t" + str(fraction))
-            sys.stdout.flush()
-
-    @staticmethod
-    def _append(data_dict, dictionary):
-        for key, value in data_dict.items():
-            if key in dictionary.keys():
-                dictionary[key].append(value)
-            else:
-                dictionary.update({key: [value]})
-        return dictionary
 
     def timestep(self, current=None):
         """Move the model one step forward in time, allowing the
@@ -641,10 +619,10 @@ class hs:
 
     @property
     def _tn_count(self):
-        return self._tn_total - self._tnca_count
+        return self.tn_total - self.tnca_count
 
     @property
-    def _tnca_count(self):
+    def tnca_count(self):
         bound = 0
         for thin in self.thin:
             for tm in thin.tm:
@@ -664,7 +642,7 @@ class hs:
         return uncovered
 
     @property
-    def _tn_total(self):
+    def tn_total(self):
         total_tn = 0
         for thin in self.thin:
             for tm in thin.tm:
@@ -674,55 +652,13 @@ class hs:
     def update_concentrations(self):
         self.c_tn = self._concentration(self._tn_count)
         self.c_ca = 10.0 ** (-self.pCa)
-        self.c_tnca = self._concentration(self._tnca_count)
+        self.c_tnca = self._concentration(self.tnca_count)
 
     @property
     def concentrations(self):
         return {"free_tm": self.c_tn,
                 "free_ca": self.c_ca,
                 "bound_tm": self.c_tnca}
-
-    def tm_report(self):
-        report = {}
-        # calculate average rates across all binding sites and average cooperativity state
-        rates = [0, 0, 0, 0, 0, 0, 0, 0]
-        count = 0
-        coop = 0
-        for thin in self.thin:
-            for tm in thin.tm:
-                for tm_site in tm.sites:
-                    if tm_site.subject_to_cooperativity:
-                        coop += 1
-                    new_rates = tm_site.get_rates
-                    for i in range(len(rates)):
-                        rates[i] += new_rates[i]
-                    count += 1
-        for i in range(len(rates)):
-            rates[i] /= count
-
-        rate_keys = ['r_12', 'r_21',
-                     'r_23', "r_32",
-                     "r_34", "r_43,",
-                     "r_41", "r_14"]
-        for i in range(len(rates)):
-            report.update({rate_keys[i]: rates[i]})
-
-        xb_fracs = self.get_xb_frac_in_states()
-        tm_fracs = self.get_tm_frac_in_states()
-
-        report.update({"coop": coop / count,
-                       "tm_fraction_bound": self._tnca_count / self._tn_total,
-                       "axial_force": self.axial_force(),
-                       "ca": self.c_ca,
-                       "xb_fraction_free": xb_fracs[0],
-                       "xb_fraction_loose": xb_fracs[1],
-                       "xb_fraction_tight": xb_fracs[2],
-                       "tm_unbound": tm_fracs[0],
-                       "tm_bound": tm_fracs[1],
-                       "tm_closed": tm_fracs[2],
-                       "tm_open": tm_fracs[3]})
-        report.update(self.concentrations)
-        return report
 
     @property
     def volume(self):
@@ -853,6 +789,20 @@ class hs:
         num_in_state = [tm_states.count(state) for state in range(4)]
         frac_in_state = [n / float(len(tm_states)) for n in num_in_state]
         return frac_in_state
+
+    def tm_rates(self):
+        """Average rates of the contained TmSites (for monitoring)"""
+        rates = None
+        for actin in self.thin:
+            if rates is None:
+                rates = actin.get_tm_rates()
+            else:
+                for key, value in actin.get_tm_rates().items():
+                    rates[key] += value
+        for key in rates:
+            rates[key] /= len(self.thin)
+
+        return rates
 
     def update_ls_from_poisson_ratio(self):
         """Update the lattice spacing consistent with the poisson ratio,

@@ -122,7 +122,7 @@ class BindingSite:
         if True:    # else:
             self.bind_to(None)
         self.bound_to = None
-        
+
     @property
     def tension(self):
         """How much load the thin filament bears at this binding site"""
@@ -190,30 +190,35 @@ class ThinFace:
             orientation: out of 0-5 directions, which this projects in
             binding_sites: address information for each binding site
         """
-        tfd = self.__dict__.copy()
-        tfd.pop('index')
-        tfd.pop('parent_thin')
-        tfd['thick_face'] = tfd['thick_face'].address
-        tfd['binding_sites'] = [bs.address for bs in tfd['binding_sites']]
-        return tfd
+        thinface_d = self.__dict__.copy()
+        thinface_d.pop('index')
+        thinface_d.pop('parent_thin')
+        thinface_d['thick_face'] = thinface_d['thick_face'].address
+        thinface_d['binding_sites'] = [bs.address for bs in thinface_d['binding_sites']]
+        thinface_d['titin_fil'] = thinface_d['titin_fil'].address
+        return thinface_d
 
-    def from_dict(self, tfd):
+    def link_titin(self, titin_fil):
+        """Add a titin filament to this face"""
+        self.titin_fil = titin_fil
+
+    def from_dict(self, thinface_d):
         """ Load values from a thin face dict. Values read in correspond to
         the current output documented in to_dict.
         """
         # Check for index mismatch
-        read, current = tuple(tfd['address']), self.address
+        read, current = tuple(thinface_d['address']), self.address
         assert read == current, "index mismatch at %s/%s" % (read, current)
         # Local keys
-        self.orientation = tfd['orientation']
+        self.orientation = thinface_d['orientation']
         self.thick_face = self.parent_thin.parent_lattice.resolve_address(
-            tfd['thick_face'])
+            thinface_d['thick_face'])
+        self.titin_fil = self.parent_thin.parent_lattice.resolve_address(
+            thinface_d['titin_fil'])
         # Sub-structure keys
-        self.binding_sites = [self.parent_thin.resolve_address(bsa) for bsa in tfd['binding_sites']]
-        
-    def link_titin(self, titin_fil):
-        """Add a titin filament to this face"""
-        self.titin_fil = titin_fil
+        self.binding_sites = [self.parent_thin.resolve_address(bsa) for bsa in thinface_d['binding_sites']]
+
+
 
     def nearest(self, axial_location):
         """Where is the nearest binding site?
@@ -237,7 +242,7 @@ class ThinFace:
         face_locs = [site.axial_location for site in self.binding_sites]
         next_index = np.searchsorted(face_locs, axial_location)
         prev_index = next_index - 1
-        # If not using a very short SL, where the end face loc is closest, 
+        # If not using a very short SL, where the end face loc is closest,
         # then find distances to two closest locations
         if next_index != len(face_locs):
             dists = np.abs((face_locs[prev_index] - axial_location,
@@ -339,11 +344,11 @@ class ThinFilament:
     node is adjacent to the Z-line.
 
     ## Tropomyosin tracks
-    While the filament is modeled as a one-start helix, as described in 
+    While the filament is modeled as a one-start helix, as described in
     [Squire1981], chains of tropomyosin polymers follow the more gently
-    curving two-start helix representation as seen in [Gunning2015]. 
+    curving two-start helix representation as seen in [Gunning2015].
     Assignment to tm chain a or b occurs with respect to the odd-even
-    value of a monomer's index in the initial list of monomers. 
+    value of a monomer's index in the initial list of monomers.
 
     [Tanner2007]:http://dx.doi.org/10.1371/journal.pcbi.0030115
     [Squire1981]:http://dx.doi.org/10.1007/978-1-4613-3183-4
@@ -534,7 +539,7 @@ class ThinFilament:
 
     def resolve_address(self, address):
         """Give back a link to the object specified in the address
-        We should only see addresses starting with 'thin_face', 'bs', 
+        We should only see addresses starting with 'thin_face', 'bs',
         'tropomyosin', or 'tm_site'
         """
         if address[0] == 'thin_face':
@@ -706,9 +711,9 @@ class ThinFilament:
     def tension_at_site(self, index):
         """The net tension born by a given binding site
 
-        How much tension is a given binding site subject to? This is 
-        useful for tension-dependent binding site kinetics and was 
-        originally included to study force depression after shortening. 
+        How much tension is a given binding site subject to? This is
+        useful for tension-dependent binding site kinetics and was
+        originally included to study force depression after shortening.
 
         Parameters
         ----------
@@ -719,7 +724,7 @@ class ThinFilament:
         -------
         tension: float
         """
-        # Passed index is subject only to forces between it and the 
+        # Passed index is subject only to forces between it and the
         # m-line side of the thin filament
         subject_to_forces = self._axial_thin_filament_forces()[index:]
         tension = np.sum(subject_to_forces)
@@ -772,6 +777,20 @@ class ThinFilament:
     def get_states(self):
         """Return the numeric states (0,1,2) of each face's cross-bridges"""
         return [tropomyosin.states for tropomyosin in self.tm]
+
+    def get_tm_rates(self):
+        """Return the average transition rates for the sites on each tropomyosin"""
+        rates = None
+        for tropomyosin in self.tm:
+            if rates is None:
+                rates = tropomyosin.rates
+            else:
+                for key, value in tropomyosin.rates.items():
+                    rates[key] += value
+        for key in rates:
+            rates[key] /= len(self.tm)
+
+        return rates
 
 
 if __name__ == '__main__':

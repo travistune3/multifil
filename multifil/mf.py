@@ -213,11 +213,12 @@ class ThickFace:
         thickface_d.pop('index')
         thickface_d.pop('parent_filament')
         thickface_d['thin_face'] = thickface_d['thin_face'].address
+        thickface_d['titin_fil'] = thickface_d['titin_fil'].address
         thickface_d['xb'] = [xb.to_dict() for xb in thickface_d['xb']]
         thickface_d['xb_by_crown'] = [xb.address if xb is not None else None
                                       for xb in thickface_d['xb_by_crown']]
         return thickface_d
-    
+
     def link_titin(self, titin_fil):
         """Add a titin filament to this face"""
         self.titin_fil = titin_fil
@@ -235,6 +236,8 @@ class ThickFace:
         # Sub-structure and remote keys
         self.thin_face = self.parent_filament.parent_lattice.resolve_address(
             tfd['thin_face'])
+        self.titin_fil = self.parent_filament.parent_lattice.resolve_address(
+            tfd['titin_fil'])
         self.xb_by_crown = [self.resolve_address(xba) if xba is not None
                             else None for xba in tfd['xb_by_crown']]
         for data, xb in zip(tfd['xb'], self.xb):

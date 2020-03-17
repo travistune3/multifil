@@ -125,7 +125,7 @@ class Spring:
 #         half_sarcomere.deltaG = abs(-g_atp - log(atp / (adp * phos)))
 #         half_sarcomere.alpha = 0.28
 #         half_sarcomere.eta = 0.68
-#         # The time_trace-step, master of all time_trace
+#         # The time-step, master of all time
 #         half_sarcomere.timestep = 1  # ms
 #
 #     def transition(half_sarcomere, bs):
@@ -206,7 +206,7 @@ class Spring:
 #         return lookup_state[half_sarcomere.state]
 #
 #     def _set_timestep(half_sarcomere, timestep):
-#         """Set the length of time_trace step used to calculate transitions"""
+#         """Set the length of time step used to calculate transitions"""
 #         half_sarcomere.timestep = timestep
 #
 #     def _r12(half_sarcomere, bs):
