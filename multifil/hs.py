@@ -41,7 +41,7 @@ class hs:
             time_dependence: a dictionary to override the initial lattice
                 spacing, sarcomere length, and actin permissiveness at each
                 timestep. Each key may contain a list of the values, to be
-                iterated over as timesteps proceed. The first entry in these
+                iterated over as time_steps proceed. The first entry in these
                 lists will override passed initial values. The valid keys
                 time_dependence can control are:
                     * "lattice_spacing"
@@ -437,9 +437,8 @@ class hs:
         for data, thin in zip(sd['thin'], self.thin):
             thin.from_dict(data)
 
-    # noinspection PySimplifyBooleanCheck,PyCallingNonCallable
     def run(self, time_steps=100, callback=None, bar=True, every=100):
-        """Run the model for the specified number of timesteps
+        """Run the model for the specified number of time_steps
 
         Parameters:
             time_steps: number of time_trace steps to run the model for (100)
@@ -452,7 +451,7 @@ class hs:
                 is passed, it will be called as f(completed_steps,
                 total_steps, sec_left, sec_passed, process_name).
                 (Defaults to True)
-            every: how many timesteps to update after
+            every: how many time_steps to update after
         Returns:
             output: the results of the callback after each timestep
             exit_code: how the simulation was terminated
@@ -484,7 +483,7 @@ class hs:
                 proc_name = mp.current_process().name
 
                 if use_bar and i % every == 0:
-                    update_bar(i=i, timesteps=time_steps,
+                    update_bar(i=i, time_steps=time_steps,
                                toc=toc, tic=time.time() - tic,
                                proc_name=proc_name, output=output)
             except KeyboardInterrupt:
@@ -498,12 +497,12 @@ class hs:
         return output, 0
 
     @staticmethod
-    def print_bar(i, timesteps, toc, proc_name, **bar_kwargs):
+    def print_bar(i, time_steps, toc, proc_name, **bar_kwargs):
         if 'tic' in bar_kwargs.keys() and bar_kwargs['tic'] < -1:
             print('Causality has failed')
         sys.stdout.write("\n" + proc_name +
                          " finished timestep %i of %i, %ih%im%is left"
-                         % (i + 1, timesteps, toc / 60 / 60, toc / 60 % 60, toc % 60))
+                         % (i + 1, time_steps, toc / 60 / 60, toc / 60 % 60, toc % 60))
         sys.stdout.flush()
 
     def timestep(self, current=None):
@@ -680,7 +679,7 @@ class hs:
         self.settle()
         return np.mean(stiffness)
 
-    def get_frac_in_states(self):
+    def get_xb_frac_in_states(self):
         """Calculate the fraction of cross-bridges in each state"""
         nested = [t.get_states() for t in self.thick]
         xb_states = [xb for fil in nested for face in fil for xb in face]

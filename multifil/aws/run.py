@@ -47,7 +47,7 @@ class manage:
             as an interactive session.
         """
         self.s3 = None  # s3()  # todo - generalize aws startup logic, currently gutted (see line 130)
-        self.uuid = metafile.split('/')[-1].split('.')[0]
+        self.uuid = os.path.basename(metafile).split('.')[0]
         self.working_dir = self._make_working_dir(self.uuid)
         self.metafile = self._parse_metafile_location(metafile)
         self.meta = self.unpack_meta(self.metafile)
@@ -67,7 +67,7 @@ class manage:
     @staticmethod
     def _make_working_dir(name):
         """Create a temporary working directory and return the name"""
-        wd_name = '/tmp/' + name
+        wd_name = '/tmp/' + name + "/"
         os.makedirs(wd_name, exist_ok=True)
         return wd_name
 
@@ -77,7 +77,7 @@ class manage:
             raise FileNotFoundError("meta file not found")
             # return half_sarcomere.s3.pull_from_s3(metafile, half_sarcomere.working_dir)
         else:
-            mfn = '/' + metafile.split('/')[-1]
+            mfn = '/' + os.path.basename(metafile)
             return shutil.copyfile(metafile, self.working_dir + mfn)
 
     @staticmethod
@@ -97,12 +97,16 @@ class manage:
         lattice_spacing = none_if_list('lattice_spacing')
         z_line = none_if_list('z_line')
         actin_permissiveness = none_if_list('actin_permissiveness')
-        hs_params = none_if_list('hs_params')
+
+        # handle no kwargs case
+        hs_params = {} if meta['hs_params'] is None else meta['hs_params']
+
         # Time dependent values
         time_dep_dict = {}
         for prop in ['z_line', 'actin_permissiveness']:
             if type(meta[prop]) is list:
                 time_dep_dict[prop] = meta[prop]
+
         # Instantiate sarcomere
         sarc = hs.hs(
             lattice_spacing=lattice_spacing,
@@ -150,6 +154,8 @@ class manage:
     def run_and_save(self):
         """Complete a run according to the loaded meta configuration and save
         results to meta-specified s3 and local locations"""
+        exitcode = None
+        result = None
 
         try:
             # Initialize data and sarc
@@ -171,11 +177,19 @@ class manage:
 
             # Finalize and save files to final locations
             self._log_it("model finished, uploading")
+        except KeyboardInterrupt:
+            exitcode = 130
+        except Exception as e:
+            import traceback
+            print("/n")
+            print(e)
+            traceback.print_exc()
         finally:    # <- executed normally but also in the event of failure
             # In the event of general failure or user interrupt,
             # we need to finalize what we have.
             # READ: orphaned files in /tmp/ are disallowed now.
             if self.datafile is not None:
+                result = self.datafile.data_dict.copy()
                 data_final_name = self.datafile.finalize()
                 self._copy_file_to_final_location(data_final_name)
                 self.datafile.delete()  # clean up temp files
@@ -187,8 +201,10 @@ class manage:
 
             self._copy_file_to_final_location(self.metafile)
             os.remove(self.metafile)
+
             os.rmdir(self.working_dir)
             self._log_it("uploading finished, done with this run")
+            return result, exitcode
 
     def _run_status(self, timestep, start, every):
         """Report the run status"""
@@ -197,7 +213,7 @@ class manage:
             sec_passed = millis.time() - start
             sec_left = int(sec_passed / (timestep + 1) * (total_steps - timestep - 1))
             proc_name = mp.current_process().name
-            self.sarc.print_bar(i=timestep, timesteps=total_steps, toc=sec_left, proc_name=proc_name)
+            self.sarc.print_bar(i=timestep, time_steps=total_steps, toc=sec_left, proc_name=proc_name)
 
     @staticmethod
     def _log_it(message):
@@ -217,9 +233,14 @@ class sarc_file:
         self.working_directory = working_dir
         sarc_name = '/' + meta['name'] + '.sarc.json'
         self.working_filename = self.working_directory + sarc_name
-        self.working_file = open(self.working_filename, 'a')
-        self.next_write = '[\n'
-        self.append(True)
+
+        try:
+            self.working_file = open(self.working_filename, 'a')
+            self.next_write = '[\n'
+            self.append(True)
+        except Exception as e:
+            print(e)
+
         self.zip_filename = None
         self.print_zip = False
 
@@ -302,7 +323,7 @@ class data_file:
         ad = lambda n, v: self.data_dict[n].append(v)
         # ## Calculated components
         radial_force = self.sarc.radial_force()
-        xb_fracs = self.sarc.get_frac_in_states()
+        xb_fracs = self.sarc.get_xb_frac_in_states()
         xb_trans = sum(sum(self.sarc.last_transitions, []), [])
         act_perm = np.mean(self.sarc.actin_permissiveness)
         thick_d = np.hstack([t.displacement_per_crown()
@@ -456,11 +477,11 @@ class manage_async:
     #   Modern computers typically have at least 2 physical cores in their cpu
     #       able to perform processes truly asynchronously, given that they don't need to exchange
     #       information to complete these processes. If they require info exchange, that is also possible
-    #       to facilitate, but may end up requiring some wait millis to ensure the processes complete correctly.
+    #       to facilitate, but may end up requiring some wait time to ensure the processes complete correctly.
     #   In addition to physical cores, modern cpus have a hardware-based trick called hyper-threading
     #       that allows them to switch between two things quickly enough that they get very close
     #       to executing two processes at once.
-    #   This means that a 4 core cpu with hyper-threading can have 8 things going on at the same millis.
+    #   This means that a 4 core cpu with hyper-threading can have 8 things going on at the same time.
 
     def __init__(self, meta_files, unattended=True, use_sarc=True, force=False):
         """Create a managed batch of instances of sarc objects, optionally running them

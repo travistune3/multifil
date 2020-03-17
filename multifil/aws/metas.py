@@ -13,11 +13,11 @@ and where it will be stored after completion.
 Example
 --------
 # >>> freq, phase = 10, .8
-# >>> timetrace = metas.time_trace(.1, 10)
-# >>> zline = metas.zline_workloop(1250, 25, freq, timetrace)
+# >>> time_trace = metas.time_trace(.1, 10)
+# >>> zline = metas.zline_workloop(1250, 25, freq, time_trace)
 # >>> activation = metas.actin_permissiveness_workloop(freq, phase, 10, 3, 3,
-# ...  timetrace)
-# >>> metas.emit('./', None, timetrace, z_line=zline,
+# ...  time_trace)
+# >>> metas.emit('./', None, time_trace, z_line=zline,
 # ...  actin_permissiveness=activation, write=False, phase=phase, freq=freq)
 {'actin_permissiveness': None,
 ...  'actin_permissiveness_func': None,
@@ -44,8 +44,8 @@ import numpy as np
 
 
 # ## Define traces to be used in runs
-def time(timestep_length, run_length_in_ms):
-    """Create a time_trace series in ms. This is easily doable through other methods
+def time_trace(timestep_length, run_length_in_ms):
+    """Create a time series in ms. This is easily doable through other methods
     but this documents it a bit.
 
     timestep_length: float
@@ -63,7 +63,7 @@ def zline_workloop(mean, amp, freq, time):
         mean: resting z-line value, will start here
         amp: peak-to-peak amplitude
         freq: frequency of oscillation
-        time: time_trace trace in ms to provide length trace for
+        time: time trace in ms to provide length trace for
     """
     period = 1000 / freq
     zline = mean + 0.5 * amp * np.cos(2 * np.pi * time / period)
@@ -71,7 +71,7 @@ def zline_workloop(mean, amp, freq, time):
 
 
 def zline_forcevelocity(L0, hold_time, L0_per_sec, time):
-    """Takes initial length, time_trace to hold there in ms, & shortening in L0/sec"""
+    """Takes initial length, time to hold there in ms, & shortening in L0/sec"""
     # Things we need to know for the shortening
     number_of_timesteps = len(time)  # for ease of reading
     timestep_length = np.diff(time)[0]
@@ -79,7 +79,7 @@ def zline_forcevelocity(L0, hold_time, L0_per_sec, time):
     shorten_steps = number_of_timesteps - hold_steps
     nm_per_step = timestep_length * 1 / 1000 * L0_per_sec * L0
     # Construct the length signal
-    zline = [L0 for i in range(hold_steps)]
+    zline = [L0 for _ in range(hold_steps)]
     for i in range(shorten_steps):
         zline.append(zline[-1] - nm_per_step)
     return zline
@@ -88,7 +88,7 @@ def zline_forcevelocity(L0, hold_time, L0_per_sec, time):
 def actin_permissiveness_workloop(freq, phase, stim_duration,
                                   influx_time, half_life, time):
     """Requires cycle frequency, phase relative to longest length
-    point, duration of on time_trace, time_trace from 10 to 90% influx level, and
+    point, duration of on time, time from 10 to 90% influx level, and
     the half-life of the Ca2+ out-pumping.
     """
     # Convert frequency to period in ms
@@ -134,7 +134,7 @@ def actin_permissiveness_workloop(freq, phase, stim_duration,
 
 
 # ## Configure a run via a saved meta file
-def emit(path_local, path_s3, time_trace, poisson=0.0, ls=None, z_line=None,
+def emit(path_local, path_s3, time, poisson=0.0, ls=None, z_line=None,
          actin_permissiveness=None, comment=None, write=True, constants=None, **kwargs):
     """Produce a structured JSON file that will be consumed to create a run
 
@@ -149,7 +149,7 @@ def emit(path_local, path_s3, time_trace, poisson=0.0, ls=None, z_line=None,
     path_s3: string
         The s3 bucket (and optional folder) to save run output to and to which
         the emitted files should be uploaded.
-    time_trace: iterable
+    time: iterable
         Time trace for run, in ms
     poisson: float
         poisson ratio of lattice. 0.5 const vol; 0 default const lattice;
@@ -213,8 +213,8 @@ def emit(path_local, path_s3, time_trace, poisson=0.0, ls=None, z_line=None,
     run_d['z_line'] = z_line
     run_d['actin_permissiveness'] = actin_permissiveness
     run_d['hs_params'] = constants
-    run_d['timestep_length'] = np.diff(time_trace)[0]
-    run_d['timestep_number'] = len(time_trace)
+    run_d['timestep_length'] = np.diff(time)[0]
+    run_d['timestep_number'] = len(time)
     # ## Include kwargs
     for k in kwargs:
         run_d[k] = kwargs[k]
