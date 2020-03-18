@@ -13,30 +13,29 @@ def general_form():
     return time, length, ap, params
 
 
-def stiff_torsional_spring(ms_p_ts=0.5, duration=500):
-    time = metas.time_trace(ms_p_ts,  # ms per timestep
-                            duration,  # ms to run for
-                            )
+def t_spring(stiffness=40, ms_p_ts=0.5, duration=500):
+    time = metas.time_trace(
+        ms_p_ts,  # ms per timestep
+        duration,  # ms to run for
+    )
+    
     length = metas.zline_workloop(
-        900,  # resting hs length
-        0,  # peak to peak amp
-        1,  # cycle freq in Hz
-        time
+        mean=1200,  # resting hs length
+        amp=0,  # peak to peak amp
+        freq=1,  # cycle freq in Hz
+        time=time  # time_trace
+    )
+    
+    ap = metas.actin_permissiveness_workloop(
+        freq=1,  # freq in Hz
+        phase=0.01,  # phase mean
+        stim_duration=20,  # stimulus duration in ms
+        influx_time=2,  # millis it takes for ca to go from 10 to 90% of influx level
+        half_life=50,  # half life of Ca decay
+        time=time  # time_trace
     )
 
-    '''init params freq=25, phase=0.1, stim_duration=20, influx_time=2, half_life=10, millis=millis'''
-    '''first twitch: 5, 10, 50, 2, 10'''
-    '''positive workloop params: 25, # freq in Hz, 0.1, # phase mean, 10, # stimulus duration in ms
-        2, # millis it takes for ca to go from 10 to 90% of influx level, 10, # half life of Ca decay, time_trace'''
-    ap = metas.actin_permissiveness_workloop(
-        1,      # freq in Hz
-        0.01,   # phase mean
-        20,     # stimulus duration in ms
-        2,      # millis it takes for ca to go from 10 to 90% of influx level
-        50,     # half life of Ca decay
-        time)
-
-    params = {}
+    params = {"mh_c_ks":stiffness, "mh_c_kw":stiffness}
 
     return time, length, ap, params
 

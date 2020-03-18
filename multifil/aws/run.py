@@ -177,9 +177,11 @@ class manage:
 
             # Finalize and save files to final locations
             self._log_it("model finished, uploading")
+            exitcode = 0
         except KeyboardInterrupt:
             exitcode = 130
         except Exception as e:
+            exitcode = 1
             import traceback
             print("/n")
             print(e)

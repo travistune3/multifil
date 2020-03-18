@@ -437,7 +437,7 @@ class hs:
         for data, thin in zip(sd['thin'], self.thin):
             thin.from_dict(data)
 
-    def run(self, time_steps=100, callback=None, bar=True, every=100):
+    def run(self, time_steps=100, callback=None, bar=True, every=1):
         """Run the model for the specified number of time_steps
 
         Parameters:
@@ -477,7 +477,7 @@ class hs:
         for i in range(time_steps):
             try:
                 self.timestep()
-                output = output.append(callback())
+                output.append(callback())
                 # Update us on how it went
                 toc = int((time.time() - tic) / (i + 1) * (time_steps - i - 1))
                 proc_name = mp.current_process().name

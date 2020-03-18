@@ -31,3 +31,30 @@ def plot_input_traces(time, length, ap, title=None):
                 xlabel='millis (ms)')
     plt.tight_layout()
     plt.show()
+    
+def plot_data(data, l_key='axial_force', r_key='actin_permissiveness',
+              title="multifilament model of muscle contraction", save_dir=None):
+    
+    fs = 12  # font size
+
+    # recreate time trace in milliseconds
+    time_trace = data['timestep'].copy()
+    for i in range(len(time_trace)):
+        time_trace[i] *= data['timestep_length']
+
+    # plot
+    fig, axes = plt.subplots(figsize=(8, 4.5))
+    axes.plot(time_trace, data[l_key], color='black')
+
+    title = title
+    plt.title(title, fontsize=fs*1.5)
+    plt.xlabel("time (ms)", fontsize=fs)
+    plt.ylabel(l_key, fontsize=fs)
+
+    ax2 = plt.twinx()
+    ax2.plot(time_trace, data[r_key]),
+    ax2.set(ylabel=r_key)
+    
+    if save_dir is not None:
+        plt.savefig(save_dir + "\\" + data['name'] + ".png", dpi=450)
+        print("saved to:", save_dir + "\\" + data['name'] + ".png")
