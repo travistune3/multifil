@@ -482,7 +482,7 @@ class hs:
         for data, thin in zip(sd['thin'], self.thin):
             thin.from_dict(data)
 
-    def run(self, time_steps=100, callback=None, bar=True, every=100):
+    def run(self, time_steps=100, callback=None, bar=True, every=5):
         """Run the model for the specified number of time_steps
 
         Parameters:

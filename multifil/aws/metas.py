@@ -135,7 +135,7 @@ def actin_permissiveness_workloop(freq, phase, stim_duration,
 
 # ## Configure a run via a saved meta file
 def emit(path_local, path_s3, time, poisson=0.0, ls=None, z_line=None,
-         pCa=None, comment=None, write=True, constants=None, **kwargs):
+         pCa=None, comment=None, write=True, hs_params=None, **kwargs):
     """Produce a structured JSON file that will be consumed to create a run
 
     Import emit into an interactive workspace and populate a directory with
@@ -162,14 +162,15 @@ def emit(path_local, path_s3, time, poisson=0.0, ls=None, z_line=None,
         If not given, default distance specified in hs.hs is used. If given as
         float, the z-line distance for the run. If given as an iterable, used as
         trace for run, timestep by timestep.
-    actin_permissiveness: float or iterable, optional
+    pCa: float or iterable, optional
         Same as for z-line.
     comment: string, optional
         Space for comment on the purpose or other characteristics of the run
-    constants: a list of settings that were passed to the sarcomere to override settings
+
     write: bool, optional
         True (default) writes file to path_local/name.meta.json. Other values
         don't. In both cases the dictionary describing the run is returned.
+    hs_params: a dict of settings that were passed to the sarcomere to override settings
     **kwargs:
         Further keyword args will be included in the output dictionary. These
         are used to sort the resulting runs by their properties of interest.
@@ -212,7 +213,7 @@ def emit(path_local, path_s3, time, poisson=0.0, ls=None, z_line=None,
     run_d['lattice_spacing'] = ls
     run_d['z_line'] = z_line
     run_d['pCa'] = pCa
-    run_d['hs_params'] = constants
+    run_d['hs_params'] = hs_params
     run_d['timestep_length'] = np.diff(time)[0]
     run_d['timestep_number'] = len(time)
     # ## Include kwargs
