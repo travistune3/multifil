@@ -20,7 +20,7 @@ def t_spring(stiffness=40, ms_p_ts=0.5, duration=500):
     )
     
     length = metas.zline_workloop(
-        mean=1200,  # resting hs length
+        mean=900,  # resting hs length
         amp=0,  # peak to peak amp
         freq=1,  # cycle freq in Hz
         time=time  # time_trace

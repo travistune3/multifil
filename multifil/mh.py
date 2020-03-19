@@ -592,6 +592,7 @@ class Head:
         elif self.detach_rate_type == 'force_sensitive':    # TODO Force sensitive detachment rate
             return self.fd_k_0 * m.exp((-force * self.fd_delta) / self.k_t)
         else:  # rate type is not valid
+            print("supplied:", self.detach_rate_type)
             raise TypeError("supplied detachment_rate key is not valid")
 
     def _free_energy(self, tip_location, state):
@@ -631,7 +632,7 @@ class Crossbridge(Head):
     # crossbridge can also accept phenotype managers
     VALID_PARAMS = ['mh_c_ks', 'mh_c_kw', 'mh_c_rs', 'mh_c_rw',
                     'mh_g_ks', 'mh_g_kw', 'mh_g_rs', 'mh_g_rw',
-                    'detachment_rate', 'mh_fd_k0', 'mh_fd_delta', 'mh_iso']
+                    'detachment_rate', 'mh_fd_k0', 'mh_fd_delta']
 
     def __init__(self, index, parent_face, thin_face, **mh_params):
         """Set up the cross-bridge
@@ -670,7 +671,8 @@ class Crossbridge(Head):
                 probability = float(profiles[i]['iso_p'])
                 cum_sum += probability
                 i += 1
-            mh_params = mh_params[profiles[i - 1]].copy()  # Note that we have to copy the profile - object logic...
+            mh_params = mh_params['mh_iso'][i - 1].copy()  # Note that we have to copy the profile - object logic...
+            mh_params.pop('iso_p')
 
         self.constants = {}
 
@@ -927,12 +929,12 @@ class Crossbridge(Head):
 
         key = 'mh_fd_k0'
         if key in mh_params.keys():
-            self.detach_rate_type = mh_params.pop(key)
+            self.fd_k_0 = mh_params.pop(key)
         self.constants[key] = self.fd_k_0
 
         key = 'mh_fd_delta'
         if key in mh_params.keys():
-            self.detach_rate_type = mh_params.pop(key)
+            self.fd_delta = mh_params.pop(key)
         self.constants[key] = self.fd_delta
 
 

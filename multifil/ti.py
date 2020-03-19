@@ -17,7 +17,6 @@ import numpy.random as random
 class Titin:
     """This is all about the titin filament"""
     VALID_PARAMS = ['ti_a', 'ti_b']
-    # TODO titin will eventually be also accept phenotype managers
 
     def __init__(self, parent_lattice, index, thick_face, thin_face, **ti_params):
         """Initialize the titin filament.
@@ -65,7 +64,8 @@ class Titin:
                 probability = float(profiles[i]['iso_p'])
                 cum_sum += probability
                 i += 1
-            ti_params = ti_params[profiles[i - 1]]  # actually select the params and proceed as normal
+            ti_params = ti_params['ti_iso'][i - 1].copy()  # actually select the params and proceed as normal
+            ti_params.pop('iso_p')
 
         """Handle ti_params"""
         self.constants = {}
