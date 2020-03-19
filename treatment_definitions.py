@@ -12,19 +12,19 @@ def general_form():
 
     return time, length, ap, params
 
-
 def t_spring(stiffness=40, ms_p_ts=0.5, duration=500):
     time = metas.time_trace(
-        ms_p_ts,  # ms per timestep
-        duration,  # ms to run for
+        timestep_length = ms_p_ts,  # ms per timestep
+        run_length_in_ms = duration,  # ms to run for
     )
     
-    length = metas.zline_workloop(
-        mean=900,  # resting hs length
-        amp=0,  # peak to peak amp
-        freq=1,  # cycle freq in Hz
-        time=time  # time_trace
-    )
+    length = 900  # nanometers
+#     length = metas.zline_workloop(
+#         mean=900,  # resting hs length
+#         amp=0,  # peak to peak amp
+#         freq=1,  # cycle freq in Hz
+#         time=time  # time_trace
+#     )
     
     ap = metas.actin_permissiveness_workloop(
         freq=1,  # freq in Hz
@@ -39,8 +39,41 @@ def t_spring(stiffness=40, ms_p_ts=0.5, duration=500):
 
     return time, length, ap, params
 
+def davis_t_spring(stiffness=40):
+    time = metas.time_trace(
+        timestep_length=0.5,  # ms per timestep
+        run_length_in_ms=500,  # ms to run for
+    )
+    
+    length = 900  # nanometers
+#     length = metas.zline_workloop(
+#         mean=900,  # resting hs length
+#         amp=0,  # peak to peak amp
+#         freq=1,  # cycle freq in Hz
+#         time=time  # time_trace
+#     )
+    
+    ap = davis_calcium_transient()[0:1000]  # trim to 0.5 s
+#     ap = metas.actin_permissiveness_workloop(
+#         freq=1,  # freq in Hz
+#         phase=0.01,  # phase mean
+#         stim_duration=20,  # stimulus duration in ms
+#         influx_time=2,  # millis it takes for ca to go from 10 to 90% of influx level
+#         half_life=50,  # half life of Ca decay
+#         time=time  # time_trace
+#     )
+
+    params = {"mh_c_ks":stiffness, "mh_c_kw":stiffness}
+
+    return time, length, ap, params
+
 
 """Utilities"""
+
+def davis_calcium_transient(treatment="WT"):
+    import json
+    with open("davis_2016_ca_as_ap.json", 'r') as ca_file:
+        return json.load(ca_file)[treatment]
 
 
 def stepsize_to_tht_mag(step_size):

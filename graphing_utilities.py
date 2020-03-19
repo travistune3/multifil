@@ -1,5 +1,5 @@
 import matplotlib.pyplot as plt
-
+import numpy as np
 
 def print_constants(constants, print_address=False):
     """prints all settings in an organized fashion"""
@@ -20,6 +20,12 @@ def print_constants(constants, print_address=False):
 
 
 def plot_input_traces(time, length, ap, title=None):
+    """prepare the inputs as series if need be"""
+    if isinstance(length, (int, float)):
+        length = list(np.full(len(time), length))
+    if isinstance(ap, (int, float)):
+        ap = list(np.full(len(time), ap))
+                  
     """plots the experimental traces"""
     fig, axes = plt.subplots(2, 1, sharex=True, figsize=(16, 9))
     axes[0].plot(time, length)
@@ -44,7 +50,12 @@ def plot_data(data, l_key='axial_force', r_key='actin_permissiveness',
 
     # plot
     fig, axes = plt.subplots(figsize=(8, 4.5))
-    axes.plot(time_trace, data[l_key], color='black')
+    if isinstance(data[l_key], list):
+        axes.plot(time_trace, data[l_key], color='black')
+    elif isinstance(data[l_key], float):
+        axes.plot(time_trace, np.full(len(time_trace), data[l_key], color='black'))
+    else:
+        print("Unable to plot:", l_key, "=", data[l_key])
 
     title = title
     plt.title(title, fontsize=fs*1.5)
@@ -52,9 +63,15 @@ def plot_data(data, l_key='axial_force', r_key='actin_permissiveness',
     plt.ylabel(l_key, fontsize=fs)
 
     ax2 = plt.twinx()
-    ax2.plot(time_trace, data[r_key]),
+    if isinstance(data[r_key], list):
+        ax2.plot(time_trace, data[r_key])
+    elif isinstance(data[r_key], float):
+        ax2.plot(time_trace, np.full(len(time_trace), data[r_key]))
+    else:
+        print("Unable to plot:", r_key, "=", data[r_key]),
     ax2.set(ylabel=r_key)
     
     if save_dir is not None:
-        plt.savefig(save_dir + "\\" + data['name'] + ".png", dpi=450)
-        print("saved to:", save_dir + "\\" + data['name'] + ".png")
+        dest = save_dir + "\\" + data['name'] + ".png"
+        plt.savefig(dest, dpi=450)
+        print("saved to:", dest)
