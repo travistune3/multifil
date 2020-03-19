@@ -123,14 +123,22 @@ class hs:
         self.version = 1.4      # Version 1.4 increases accessible parameters and a constants dictionary
         #                       # Consistent with regulatory branch (Tropomyosin)
 
-        """ ## Handle Kwargs ## """
+        """ ## Handle Kwargs ## """  # =================================================================================
         # Titin constants
         # Isomer-available
         valid_ti_params = ti.Titin.VALID_PARAMS
         if 'ti_iso' in kwargs.keys():
             for param in valid_ti_params:
-                assert param not in kwargs.keys(), "ti_iso cannot be set at the same millis as ti parameters"
+                assert param not in kwargs.keys(), "ti_iso cannot be set at the same time as ti parameters"
             ti_params = {"ti_iso": kwargs.pop('ti_iso')}
+
+            # check profiles
+            profiles = ti_params['ti_iso']
+            total_p = 0
+            for profile in profiles:
+                total_p += profile['iso_p']
+            assert 1.0 - total_p < 0.001, \
+                "Please enter TITIN isomer probabilities ROUNDED to the nearest -tenth- of a -percent-."
         else:
             ti_params = {}
             for param in valid_ti_params:
@@ -138,7 +146,7 @@ class hs:
                     ti_params[param] = kwargs.pop(param)
 
         # Actin thin filament constants
-        # Isomer unavailable
+        # TODO add isomer support - tricky because of the way that the filament is constructed
         valid_af_params = af.ThinFilament.VALID_PARAMS
         af_params = {}
         for param in valid_af_params:
@@ -149,8 +157,16 @@ class hs:
         valid_mh_params = mf.mh.Crossbridge.VALID_PARAMS
         if 'mh_iso' in kwargs.keys():
             for param in valid_mh_params:
-                assert param not in kwargs.keys(), "mh_iso cannot be set at the same millis as mh parameters"
+                assert param not in kwargs.keys(), "mh_iso cannot be set at the same time as mh parameters"
             mf_params = {"mh_iso": kwargs.pop('mh_iso')}
+
+            # check profiles
+            profiles = mf_params['mh_iso']
+            total_p = 0
+            for profile in profiles:
+                total_p += profile['iso_p']
+            assert 1.0 - total_p < 0.001, \
+                "Please enter MYOSIN_HEAD isomer probabilities ROUNDED to the nearest -tenth- of a -percent-."
         else:
             mh_params = {}
             for param in valid_mh_params:
@@ -159,7 +175,8 @@ class hs:
             mf_params = {"mh_params": mh_params}
 
         # ## Myosin Thick filament constants
-        # mf_params = {} # constructed in crossbridge parameter logic (^ above ^)
+        # TODO add isomer support - tricky because of the way that the filament is constructed
+        # mf_params = {} # constructed in crossbridge parameter logic
         valid_mf_params = mf.ThickFilament.VALID_PARAMS
         for param in valid_mf_params:
             if param in kwargs.keys():
@@ -168,7 +185,7 @@ class hs:
         # print undigested kwargs
         for key in kwargs.keys():
             print("Unknown Kwarg:", key)
-        """ ## Finished Handling Kwargs ## """
+        """ ## Finished Handling Kwargs ## """  # ======================================================================
 
         # Parse initial LS and Z-line
         if time_dependence is not None:
@@ -633,7 +650,7 @@ class hs:
     def radial_force(self):
         """The sum of the thick filaments' radial forces, as a (y,z) vector"""
         return np.sum([thick.radial_force_of_filament() for thick in self.thick], 0)  # + ...
-        # sum([titin.radial_force() for titin in half_sarcomere.titin]) #CHECK
+        # sum([titin.radial_force() for titin in self.titin]) #CHECK
 
     def _single_settle(self, factor=0.95):
         """Settle down now, just a little bit"""

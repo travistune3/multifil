@@ -49,13 +49,26 @@ class Titin:
         self.thin_face.link_titin(self)
         # ## And now we declare titin properties that will be used to
         # ## calculate forces
-        self.rest = 120  # nm, no citation
+        self.rest = 120  # nm, no citation TODO cite
         # Create the constants that determine force
         self.a = 240
         self.b = 0.0045
 
         """Handle key-worded ti_params - overriding set values"""
-        self.constants = {}     # Record variables that could be changed here
+        # ## Handle tm_isomer calculations
+        if 'ti_iso' in ti_params.keys():  # !!! This means we don't actually have settings to pass yet !!!
+            profiles = ti_params['ti_iso']
+            cum_sum = 0
+            rolled_val = random.random()  # get the rolled value
+            i = 0
+            while cum_sum < rolled_val:
+                probability = float(profiles[i]['iso_p'])
+                cum_sum += probability
+                i += 1
+            ti_params = ti_params[profiles[i - 1]]  # actually select the params and proceed as normal
+
+        """Handle ti_params"""
+        self.constants = {}
 
         # Titin constant a
         if "ti_a" in ti_params.keys():
@@ -139,7 +152,7 @@ class Titin:
             return self.a * np.exp(self.b * x)
         # else:
         # Cubic model
-        # x = length - half_sarcomere.rest
+        # x = length - self.rest
         # a = 3.25e-5
         # b = -5e-3
         # c = 9e-1
@@ -147,7 +160,7 @@ class Titin:
         # return a*(x**3) + b*(x**2) + c*x + d #Linke et al. PNAS 1998
         # else:
         # Sawtooth Model
-        # extension = length - half_sarcomere.rest
+        # extension = length - self.rest
         # a = 1.2e-6
         # b = 3
         # c = 0.5e-6#*random.rand()
@@ -156,7 +169,7 @@ class Titin:
         # return a*extension**b + c*np.fmod(extension,d)**e
         # else:
         # Hookean Model
-        # return half_sarcomere.k * (half_sarcomere.length() - half_sarcomere.rest)
+        # return self.k * (self.length() - self.rest)
 
     def axial_force(self):
         """Return the total force the titin filament exerts on the

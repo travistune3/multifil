@@ -686,7 +686,7 @@ class ThickFilament:
         return net_force_at_crown
 
     def _normed_total_titin_force(self):
-        """Settle expects to move nodes to satisfy springs of stiffness half_sarcomere.k.
+        """Settle expects to move nodes to satisfy springs of stiffness self.k.
         Titin has a different stiffness. We express the force titin is
         generating in terms of the thick fil stiffness in order to treat the
         movement necessary to balance the node attached to titin the same as
