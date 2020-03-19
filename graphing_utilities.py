@@ -18,6 +18,12 @@ def print_constants(constants, print_address=False):
             else:
                 print(", ", end="\t")
 
+def print_justified_constants(constants):
+    for module in constants.keys():
+        print(module)
+        for address, values in constants[module].items():
+            print("   ", address, "\t", list(values.values()))
+
 
 def plot_input_traces(time, length, ap, title=None):
     """prepare the inputs as series if need be"""
