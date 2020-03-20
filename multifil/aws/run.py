@@ -21,7 +21,7 @@ import os
 import shutil
 import subprocess
 import sys
-import time as millis
+import time
 
 import boto
 import numpy as np
@@ -75,7 +75,7 @@ class manage:
         """Parse the passed location, downloading the metafile if necessary"""
         if not os.path.exists(metafile):
             raise FileNotFoundError("meta file not found")
-            # return half_sarcomere.s3.pull_from_s3(metafile, half_sarcomere.working_dir)
+            # return self.s3.pull_from_s3(metafile, self.working_dir)
         else:
             mfn = '/' + os.path.basename(metafile)
             return shutil.copyfile(metafile, self.working_dir + mfn)
@@ -165,7 +165,7 @@ class manage:
             # Run away
             # noinspection PyArgumentList
             np.random.seed()
-            tic = millis.time()
+            tic = time.time()
 
             for timestep in range(self.meta['timestep_number']):
                 self.sarc.timestep(timestep)
@@ -212,7 +212,7 @@ class manage:
         """Report the run status"""
         if timestep % every == 0 or timestep == 0:
             total_steps = self.meta['timestep_number']
-            sec_passed = millis.time() - start
+            sec_passed = time.time() - start
             sec_left = int(sec_passed / (timestep + 1) * (total_steps - timestep - 1))
             proc_name = mp.current_process().name
             self.sarc.print_bar(i=timestep, time_steps=total_steps, toc=sec_left, proc_name=proc_name)
@@ -258,7 +258,7 @@ class sarc_file:
         """Close the current sarcomere file for proper JSON formatting"""
         self.working_file.write('\n]')
         self.working_file.close()
-        millis.sleep(1)
+        time.sleep(1)
         self.zip_filename = self.meta['name'] + '.sarc.tar.gz'
         cp = subprocess.run(['tar', 'czf', self.zip_filename,
                              '-C', self.working_directory,
@@ -271,7 +271,7 @@ class sarc_file:
     def delete(self):
         """Delete the sarc zip file from disk"""
         try:
-            # print("removing zip filename\n\t", half_sarcomere.zip_filename, "\n")
+            # print("removing zip filename\n\t", self.zip_filename, "\n")
             os.remove(self.zip_filename)
         except FileNotFoundError:
             print("Error removing temp file, check C:\/tmp for", self.zip_filename)
@@ -402,7 +402,7 @@ class data_file:
     def delete(self):
         """Delete the data file from disk"""
         try:
-            # print("removing working filename\n\t", half_sarcomere.working_filename, "\n")
+            # print("removing working filename\n\t", self.working_filename, "\n")
             os.remove(self.working_filename)
         except FileNotFoundError:
             print("File not created yet")
@@ -559,11 +559,11 @@ class manage_async:
                 print(e)
 
     def run_and_save(self):
-        start = millis.time()
+        start = time.time()
         for process in self.processes:
             process.start()
         for process in self.processes:
             process.join()
 
-        end = millis.time()
+        end = time.time()
         print(end - start, "seconds")

@@ -124,7 +124,7 @@ class hs:
         # data structure are made, not on release of new features
         self.version = 1.4  # Includes support for tropomyosin AND titin
 
-        """ ## Handle Kwargs ## """
+        """ ## Handle Kwargs ## """  # =================================================================================
         # Titin constants
         # Isomer-available
         valid_ti_params = ti.Titin.VALID_PARAMS
@@ -132,6 +132,14 @@ class hs:
             for param in valid_ti_params:
                 assert param not in kwargs.keys(), "ti_iso cannot be set at the same time as ti parameters"
             ti_params = {"ti_iso": kwargs.pop('ti_iso')}
+
+            # check profiles
+            profiles = ti_params['ti_iso']
+            total_p = 0
+            for profile in profiles:
+                total_p += profile['iso_p']
+            assert 1.0 - total_p < 0.001,\
+                "Please enter TITIN isomer probabilities ROUNDED to the nearest -tenth- of a -percent-."
         else:
             ti_params = {}
             for param in valid_ti_params:
@@ -139,14 +147,31 @@ class hs:
                     ti_params[param] = kwargs.pop(param)
 
         # Tropomyosin/Troponin constants
-        tm_params = {}
-        if 'tm_coop' in kwargs.keys():
-            tm_params['tm_coop'] = kwargs.pop('tm_coop')
+        # Isomer-available
+        valid_tm_params = af.tm.TmSite.VALID_PARAMS
+        if 'tm_iso' in kwargs.keys():
+            for param in valid_tm_params:
+                assert param not in kwargs.keys(), "tm_iso cannot be set at the same time as tm parameters"
+            af_params = {"tm_iso": kwargs.pop('tm_iso')}
+
+            # check profiles
+            profiles = af_params['tm_iso']
+            total_p = 0
+            for profile in profiles:
+                total_p += profile['iso_p']
+            assert 1.0 - total_p < 0.001, \
+                "Please enter TROPOMYOSIN isomer probabilities ROUNDED to the nearest -tenth- of a -percent-."
+        else:
+            tm_params = {}
+            for param in valid_tm_params:
+                if param in kwargs.keys():
+                    tm_params[param] = kwargs.pop(param)
+            af_params = {'tm_params': tm_params}
 
         # Actin thin filament constants
-        # Isomer unavailable
+        # TODO add isomer support - tricky because of the way that the filament is constructed
+        # af_params = {} # constructed in tropomyosin parameter logic
         valid_af_params = af.ThinFilament.VALID_PARAMS
-        af_params = {}
         for param in valid_af_params:
             if param in kwargs.keys():
                 af_params[param] = kwargs.pop(param)
@@ -157,6 +182,14 @@ class hs:
             for param in valid_mh_params:
                 assert param not in kwargs.keys(), "mh_iso cannot be set at the same time as mh parameters"
             mf_params = {"mh_iso": kwargs.pop('mh_iso')}
+
+            # check profiles
+            profiles = mf_params['mh_iso']
+            total_p = 0
+            for profile in profiles:
+                total_p += profile['iso_p']
+            assert 1.0 - total_p < 0.001, \
+                "Please enter MYOSIN_HEAD isomer probabilities ROUNDED to the nearest -tenth- of a -percent-."
         else:
             mh_params = {}
             for param in valid_mh_params:
@@ -165,6 +198,7 @@ class hs:
             mf_params = {"mh_params": mh_params}
 
         # ## Myosin Thick filament constants
+        # TODO add isomer support - tricky because of the way that the filament is constructed
         # mf_params = {} # constructed in crossbridge parameter logic
         valid_mf_params = mf.ThickFilament.VALID_PARAMS
         for param in valid_mf_params:
@@ -174,7 +208,7 @@ class hs:
         # print undigested kwargs
         for key in kwargs.keys():
             print("Unknown Kwarg:", key)
-        """ ## Finished Handling Kwargs ## """
+        """ ## Finished Handling Kwargs ## """  # ======================================================================
 
         # Parse initial LS and Z-line
         if time_dependence is not None:

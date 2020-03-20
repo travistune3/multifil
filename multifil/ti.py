@@ -56,6 +56,19 @@ class Titin:
         self.a = 240
         self.b = 0.0045
 
+        """Handle ti_params"""
+        # ## Handle ti_isomer calculations
+        if 'ti_iso' in ti_params.keys():  # !!! This means we don't actually have settings to pass yet !!!
+            profiles = ti_params['ti_iso']
+            cum_sum = 0
+            rolled_val = random.random()  # get the rolled value
+            i = 0
+            while cum_sum < rolled_val:
+                probability = float(profiles[i]['iso_p'])
+                cum_sum += probability
+                i += 1
+            ti_params = ti_params[profiles[i - 1]]  # actually select the params and proceed as normal
+
         """Handle key-worded ti_params - overriding set values"""
         self.constants = {}
 

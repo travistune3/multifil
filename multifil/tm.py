@@ -88,16 +88,15 @@ class TmSite:
         """Handle tm_params"""
         # ## Handle tm_isomer calculations
         if 'tm_iso' in tm_params.keys():  # !!! This means we don't actually have settings to pass yet !!!
-            tm_params = tm_params['tm_iso']
+            profiles = tm_params['tm_iso']
             cum_sum = 0
-            rolled_val = random.random()
-            keys = list(tm_params.keys())
-            k_i = 0
+            rolled_val = random.random()  # get the rolled value
+            i = 0
             while cum_sum < rolled_val:
-                probability = float(keys[k_i]) / 100.0
+                probability = float(profiles[i]['iso_p'])
                 cum_sum += probability
-                k_i += 1
-            tm_params = tm_params[keys[k_i - 1]]    # actually select the params and proceed as normal
+                i += 1
+            tm_params = tm_params[profiles[i - 1]].copy()  # Note that we have to copy the profile - object logic...
 
         self.constants = {}
 
