@@ -70,15 +70,24 @@ def davis_t_spring(stiffness=40):
 
 """Utilities"""
 
+
 def davis_calcium_transient(treatment="WT"):
     import json
     with open("davis_2016_ca_as_ap.json", 'r') as ca_file:
         return json.load(ca_file)[treatment]
 
 
-def stepsize_to_tht_mag(step_size):
-    c_rest_weak = radians(47.16)
-    g_rest_weak = 19.93
+def stepsize_to_tht_mag(step_size, mh_c_rw=radians(47.16), mh_g_rw=19.93):
+    """ Parameters:
+            step_size: how much the spring should change along the axial direction during a power stroke
+            mh_c_rw: the weak state angle - optional. If changed, make sure that the model is changing mh_c_rw as well.
+            mh_g_rw: the weak state length - optional. If changed, make sure that the model is changing mh_g_rw as well.
+        Returns:
+            mh_c_rs: what the strong state angle should be set to so that the power stroke has the specified step size
+            mh_g_rs: what the strong state length should be set to so that the power stroke has the specified step size
+    """
+    c_rest_weak = mh_c_rw
+    g_rest_weak = mh_g_rw
     # weak_ls = g_rest_weak * np.sin(c_rest_weak)
 
     c_rest_strong = radians(73.20)
@@ -94,6 +103,6 @@ def stepsize_to_tht_mag(step_size):
     # tan (theta) = needed / strong_ls
     tht = np.arctan(needed / strong_ls)
 
-    tht = np.pi / 2 - tht  # change to mh_converter angle
-    mag = np.sqrt(needed * needed + strong_ls * strong_ls)
-    return tht, mag
+    mh_c_rs = np.pi / 2 - tht  # change to mh_converter angle
+    mh_g_rs = np.sqrt(needed * needed + strong_ls * strong_ls)
+    return mh_c_rs, mh_g_rs
