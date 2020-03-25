@@ -354,8 +354,6 @@ class Head:
         deltaG = abs(-g_atp - log(atp / (adp * phos)))
         self.alphaDG = 0.28 * -deltaG
         self.etaDG = 0.68 * -deltaG
-        # The time-step, master of all time
-        self._timestep = 1  # ms
 
     def transition(self, bs, ap):
         """Transition to a new state (or not)
@@ -451,13 +449,10 @@ class Head:
         return lookup_state[self.state]
 
     @property
-    def timestep(self):
-        return self._timestep
-
-    @timestep.setter
-    def timestep(self, timestep):
-        """Set the length of time step used to calculate transitions"""
-        self._timestep = timestep
+    def timestep_len(self):
+        raise AttributeError("method timestep_len in class Head must be overridden by Child class.")
+        # Prevent inheritance issues where Head objects cycle at ts_l = 1 ms if not told otherwise.
+        # AMA 25MAR2020
 
     def _prob(self, rate):
         """Convert a rate to a probability, based on the current timestep
@@ -471,7 +466,7 @@ class Head:
             probability: the probability the event occurs during a timestep
                 of length determined by self.timestep
         """
-        return 1 - m.exp(-rate * self.timestep)
+        return 1 - m.exp(-rate * self.timestep_len)
 
     def _bind(self, bs):
         """Bind (or don't) based on the distance from the Head tip to a Actin
@@ -715,7 +710,7 @@ class Crossbridge(Head):
                 resolve_address(xbd['bound_to'])
 
     @property
-    def timestep(self):
+    def timestep_len(self):
         """Timestep size is stored at the half-sarcomere level"""
         return self.parent_face.parent_filament.parent_lattice.timestep_len
 

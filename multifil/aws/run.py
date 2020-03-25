@@ -103,7 +103,7 @@ class manage:
 
         # Time dependent values
         time_dep_dict = {}
-        for prop in ['z_line', 'actin_permissiveness']:
+        for prop in ['z_line', 'pCa']:
             if type(meta[prop]) is list:
                 time_dep_dict[prop] = meta[prop]
 
