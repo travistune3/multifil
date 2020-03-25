@@ -461,13 +461,9 @@ class Head:
 
     @property
     def timestep_len(self):
-        return self._timestep
-
-    @timestep_len.setter
-    def timestep_len(self, timestep):
-        """Set the length of time_trace step used to calculate transitions"""
-        print("changing timestep to", timestep)     # Why would this be called? -AMA 10MAR2020
-        self._timestep = timestep
+        raise AttributeError("method timestep_len in class Head must be overridden by Child class.")
+        # Prevent inheritance issues where Head objects cycle at ts_l = 1 ms if not told otherwise.
+        # AMA 25MAR2020
 
     def _prob(self, rate):
         """Convert a rate to a probability, based on the current timestep
