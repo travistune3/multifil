@@ -66,11 +66,11 @@ class TmSite:
         self.binding_site.tm_site = self
         self.state = 0
         # ## Kinetics from Tanner 2007, 2012, and thesis
-        K1 = 1e5  # per mole Ca
+        K1 = 2.65e7  # Sparrow 2004 # per mole Ca
         K2 = 10  # unit-less
         K3 = 10  # TODO determine equilibrium
         K4 = 1e6  # unit-less
-        k_12 = 1e8  # per mole Ca per sec # TODO verify MR
+        k_12 = 4e7  # Sparrow 2004 # 1e8  # per mole Ca per sec # TODO verify MR
         k_23 = 10  # per sec
         k_34 = 10  # TODO determine units
         k_41 = 50  # per sec
@@ -79,7 +79,7 @@ class TmSite:
         k_23 *= s_per_ms  # occurrences per second
         k_34 *= s_per_ms  # to
         k_41 *= s_per_ms  # occurrences per ms
-        coop = 100  # cooperative multiplier
+        coop = 1  # cooperative multiplier
         self._K1, self._K2, self._K3, self._K4 = K1, K2, K3, K4
         self._k_12, self._k_23, self._k_34, self._k_41 = k_12, k_23, k_34, k_41
         self._coop = coop
@@ -155,6 +155,7 @@ class TmSite:
         self.state = tms_d['_state']
         self._k_12 = tms_d['_k_12']
         self._k_23 = tms_d['_k_23']
+        self._k_34 = tms_d['_k_34']
         self._k_41 = tms_d['_k_41']
         self._K1 = tms_d['_K1']
         self._K2 = tms_d['_K2']
@@ -264,9 +265,9 @@ class TmSite:
 
     def _r12(self):
         """Rate of Ca and TnC association, conditional on [Ca]"""
-        forward = self._k_12 * self.ca * self._concentrations['free_tm']
-        coop = self._coop if self.subject_to_cooperativity else 1
-        forward *= coop
+        # forward = self._k_12 * self.ca * self._concentrations['free_tm']
+        # coop = self._coop if self.subject_to_cooperativity else 1
+        # forward *= coop
 
         forward = self._k_12 * self.ca * self._coop
 
@@ -275,11 +276,11 @@ class TmSite:
     def _r21(self):
         """Rate of Ca detachment from TnC, conditional on [Ca]"""
         k_21 = self._k_12 / self._K1
-        reverse = k_21 * self._concentrations['bound_tm']
+        reverse = k_21  # * self._concentrations['bound_tm']
         return reverse
 
     def _r23(self):
-        """Rate of TnI TnC association"""
+        """Rate of TnI TnC interaction"""
         forward = self._k_23
 
         coop = self._coop if self.subject_to_cooperativity else 1
@@ -288,7 +289,7 @@ class TmSite:
         return forward
 
     def _r32(self):
-        """Rate of TnI TnC detachment"""
+        """Rate of TnI TnC interaction reversal"""
         k_32 = self._k_23 / self._K2
         reverse = k_32
 
@@ -297,7 +298,7 @@ class TmSite:
         return reverse
 
     def _r34(self):
-        """Rate of tropomyosin movement - uncovering"""
+        """Rate of tropomyosin movement - Uncovering"""
         forward = self._k_34
         coop = self._coop if self.subject_to_cooperativity else 1
         forward *= coop
@@ -305,13 +306,12 @@ class TmSite:
         return forward
 
     def _r43(self):
-        """Rate of tropomyosin movement - covering"""
+        """Rate of tropomyosin movement - Covering"""
         return self._k_34 / self._K3
 
     def _r41(self):
-        """Rate of Actin site covering due to Ca disassociation induced TnI TnC disassociation
-        """
-        forward = self._k_41 * self._concentrations['bound_tm']
+        """Rate of Actin site covering due to Ca disassociation induced TnI TnC disassociation"""
+        forward = self._k_41  # * self._concentrations['bound_tm']
         return forward
 
     def _r14(self):
@@ -323,7 +323,7 @@ class TmSite:
 
         # reverse *= self._r23()
 
-        return reverse
+        return 0
 
     def _prob(self, rate):
         """ Convert a rate to a probability, based on the current timestep
@@ -377,11 +377,6 @@ class TmSite:
         self.state = {"forward": (self.state + 1) % 4,
                       "backward": (self.state + 3) % 4,
                       "none": self.state}[trans_word]
-
-        # TODO remove state skip
-        if self.state == 2:
-            self.state = {"forward": 3,
-                          "backward": 1}[trans_word]
 
         assert self.state in (0, 1, 2, 3), "Tropomyosin state has invalid value"
 
