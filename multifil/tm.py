@@ -164,7 +164,7 @@ class TmSite:
         return
 
     @property
-    def timestep(self):
+    def timestep_len(self):
         """Timestep size is stored at the half-sarcomere level"""
         return self.parent_tm.parent_thin.parent_lattice.timestep_len
 
@@ -340,7 +340,7 @@ class TmSite:
                 the probability the event occurs during a timestep
                 of length determined by self.timestep
         """
-        return 1 - np.exp(-rate * self.timestep)
+        return 1 - np.exp(-rate * self.timestep_len)
 
     @staticmethod
     def _forward_backward(forward_p, backward_p, rand):
