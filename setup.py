@@ -8,5 +8,4 @@ setup(name='multifil',
       author_email='cdave@uw.edu',
       license='MIT',
       packages=find_packages(),
-      install_requires=['numpy', 'boto', 'ujson']
-     )
+      install_requires=['numpy', 'boto', 'ujson', 'matplotlib'])

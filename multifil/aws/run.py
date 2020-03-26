@@ -33,7 +33,7 @@ from .. import hs
 class manage:
     """Run, now with extra object flavor"""
 
-    def __init__(self, metafile, unattended=True, use_sarc=True):
+    def __init__(self, metafile, unattended=True, use_sarc=True, live_update=None):
         """Create a managed instance of the sarc, optionally running it
 
         Parameters
@@ -53,6 +53,7 @@ class manage:
         self.meta = self.unpack_meta(self.metafile)
         self.sarc = self.unpack_meta_to_sarc(self.meta)
         self.use_sarc = use_sarc
+        self.live_update = live_update
         self.sarcfile = None
         self.datafile = None
         self.zip_filename = None
@@ -170,6 +171,8 @@ class manage:
             for timestep in range(self.meta['timestep_number']):
                 self.sarc.timestep(timestep)
                 self.datafile.append()
+                if self.live_update is not None and timestep % self.live_update == 0:
+                    self.datafile.finalize()
                 if self.use_sarc:
                     self.sarcfile.append()
                 # Update on how it is going

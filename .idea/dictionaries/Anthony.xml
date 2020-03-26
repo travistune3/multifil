@@ -3,6 +3,7 @@
     <words>
       <w>actin</w>
       <w>auxetic</w>
+      <w>boto</w>
       <w>cooperativity</w>
       <w>cpus</w>
       <w>crossbridge</w>
@@ -21,6 +22,7 @@
       <w>konstant</w>
       <w>locs</w>
       <w>mathematica</w>
+      <w>matplotlib</w>
       <w>metafile</w>
       <w>millman</w>
       <w>motil</w>
@@ -48,6 +50,7 @@
       <w>tnca</w>
       <w>tropomyosin</w>
       <w>troponin</w>
+      <w>ujson</w>
       <w>versioning</w>
       <w>woodhead</w>
       <w>workloop</w>

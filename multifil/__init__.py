@@ -1,4 +1,4 @@
-import json as json
+import ujson as json
 from . import hs
 from . import aws
 # from . import utilities

@@ -564,61 +564,61 @@ class Tropomyosin:
 
         """Activation spread method - 1 Anthony's Activation Spreading"""
         # all_sites = self.sites.copy()
-        # remaining_sites = self._roll_for_activation(all_sites)
+        # remaining_sites, transitions = self._roll_for_activation(all_sites)
         # for site in remaining_sites:
-        #     site.transition()
+        #     transitions.append(site.transition())
         """Activation spread method - 2 Original Cooperation"""
         transitions = [site.transition() for site in self.sites]
         # Spread activation
-        self._spread_activation()   # TODO figure out how to handle these transitions
+        # self._spread_activation()   # TODO amend state numberings
 
-        return transitions
+        return transitions  # TODO figure out how to incorporate 'mechanical' transitions from _spread_activation()
 
     def _roll_for_activation(self, all_sites):
         """"Spread activation along the filament"""
+        transitions = []
         # If nothing is in state 2, we're done
-        if max([site.state for site in all_sites]) < 2:
-            return all_sites
-        # Find all my axial locations
-        locs = self.axial_locations
-        # ## Chunk through each site
-        # spread activation to the left, spread activation to the right
-        for site in all_sites:
-            if site.state == 2:
-                all_sites.pop(indexOf(all_sites, site))
-                loc = site.axial_location
-                span = site.span
-                near_inds = np.nonzero(np.abs(locs - loc) < span)[0]
-                near = [self.sites[index] for index in near_inds]
-                index = 0
-                if site in near:
-                    index = indexOf(near, site)
-                for n_site in near[index:]:
-                    if n_site in all_sites:
-                        all_sites.pop(indexOf(all_sites, n_site))
-                        n_site.transition()
-                for n_site in reversed(near[:index]):
-                    if n_site in all_sites:
-                        all_sites.pop(indexOf(all_sites, n_site))
-                        n_site.transition()
-        return all_sites
+        if not max([site.state for site in all_sites]) < 2:
+            # Find all my axial locations
+            locs = self.axial_locations
+            # ## Chunk through each site
+            # spread activation to the left, spread activation to the right
+            for site in all_sites:
+                if site.state == 2:
+                    all_sites.pop(indexOf(all_sites, site))
+                    loc = site.axial_location
+                    span = site.span
+                    near_inds = np.nonzero(np.abs(locs - loc) < span)[0]
+                    near = [self.sites[index] for index in near_inds]
+                    index = 0
+                    if site in near:
+                        index = indexOf(near, site)
+                    for n_site in near[index:]:
+                        if n_site in all_sites:
+                            all_sites.pop(indexOf(all_sites, n_site))
+                            transitions.append(n_site.transition())
+                    for n_site in reversed(near[:index]):
+                        if n_site in all_sites:
+                            all_sites.pop(indexOf(all_sites, n_site))
+                            transitions.append(n_site.transition())
+        return all_sites, transitions
 
     def _spread_activation(self):
         """"Spread activation along the filament"""
-        # If nothing is in state 3, we're done
-        if max([site.state for site in self.sites]) < 3:
+        # If nothing is in state 2, we're done
+        if max([site.state for site in self.sites]) < 2:
             return
         # Find all my axial locations
         locs = self.axial_locations
         # Chunk through each site
         for site in self.sites:
-            if site.state == 3:
+            if site.state == 2:
                 loc = site.axial_location
                 span = site.span
                 near_inds = np.nonzero(np.abs(locs - loc) < span)[0]
                 near = [self.sites[index] for index in near_inds]
                 for n_site in near:
-                    if n_site.state == 0:
+                    if n_site.state != 2:
                         n_site.state = 1
         return
 
