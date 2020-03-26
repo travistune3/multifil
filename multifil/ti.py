@@ -67,7 +67,8 @@ class Titin:
                 probability = float(profiles[i]['iso_p'])
                 cum_sum += probability
                 i += 1
-            ti_params = ti_params[profiles[i - 1]]  # actually select the params and proceed as normal
+            ti_params = ti_params['ti_iso'][i - 1].copy()  # actually select the params and proceed as normal
+            ti_params.pop('iso_p')
 
         """Handle key-worded ti_params - overriding set values"""
         self.constants = {}

@@ -606,7 +606,8 @@ class Crossbridge(Head):
 
     # kwargs that can be used to edit crossbridge phenotype
     # crossbridge can also accept phenotype profiles
-    VALID_PARAMS = ['mh_c_ks', 'mh_c_kw']
+    VALID_PARAMS = ['mh_c_ks', 'mh_c_kw', 'mh_c_rw', 'mh_c_rs',
+                    'mh_g_ks', 'mh_g_kw', 'mh_g_rw', 'mh_g_rs']
 
     def __init__(self, index, parent_face, thin_face, **mh_params):
         """Set up the cross-bridge
@@ -645,17 +646,12 @@ class Crossbridge(Head):
                 probability = float(profiles[i]['iso_p'])
                 cum_sum += probability
                 i += 1
-            mh_params = mh_params[profiles[i - 1]].copy()  # Note that we have to copy the profile - object logic...
+            mh_params = mh_params['mh_iso'][i - 1].copy()  # Note that we have to copy the profile - object logic...
+            mh_params.pop('iso_p')
 
         self.constants = {}
 
-        if 'mh_c_ks' in mh_params:
-            self.c.k_s = mh_params.pop('mh_c_ks')
-        self.constants['mh_c_ks'] = self.c.k_s
-
-        if 'mh_c_kw' in mh_params:
-            self.c.k_w = mh_params.pop('mh_c_kw')
-        self.constants['mh_c_kw'] = self.c.k_w
+        self._process_params(mh_params)
 
         # Print kwargs not digested
         for key in mh_params.keys():
@@ -835,6 +831,59 @@ class Crossbridge(Head):
     def _get_lattice_spacing(self):
         """Ask our superiors for lattice spacing data"""
         return self.parent_face.lattice_spacing
+
+    def _process_params(self, mh_params):
+        """converter definitions"""
+
+        # converter k_strong_state
+        key = 'mh_c_ks'
+        if key in mh_params.keys():
+            self.c.k_s = mh_params.pop(key)
+        self.constants[key] = self.c.k_s
+
+        # converter k_weak_state
+        key = 'mh_c_kw'
+        if key in mh_params.keys():
+            self.c.k_w = mh_params.pop(key)
+        self.constants[key] = self.c.k_w
+
+        # converter rest_weak_state
+        key = 'mh_c_rw'
+        if key in mh_params.keys():
+            self.c.r_w = mh_params.pop(key)
+        self.constants[key] = self.c.r_w
+
+        # converter rest_strong_state
+        key = 'mh_c_rs'
+        if key in mh_params.keys():
+            self.c.r_s = mh_params.pop(key)
+        self.constants[key] = self.c.r_s
+
+        """globular definitions"""
+
+        # globular k_strong_state
+        key = 'mh_g_ks'
+        if key in mh_params.keys():
+            self.g.k_s = mh_params.pop(key)
+        self.constants[key] = self.g.k_s
+
+        # globular k_weak_state
+        key = 'mh_g_kw'
+        if key in mh_params.keys():
+            self.g.k_w = mh_params.pop(key)
+        self.constants[key] = self.g.k_w
+
+        # globular rest_weak_state
+        key = 'mh_g_rw'
+        if key in mh_params.keys():
+            self.g.r_w = mh_params.pop(key)
+        self.constants[key] = self.g.r_w
+
+        # globular rest_strong_state
+        key = 'mh_g_rs'
+        if key in mh_params.keys():
+            self.g.r_s = mh_params.pop(key)
+        self.constants[key] = self.g.r_s
 
 
 if __name__ == '__main__':

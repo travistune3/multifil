@@ -43,7 +43,9 @@ class TmSite:
 
     # kwargs that can be used to edit tm_site phenotype
     # tm_site can also accept phenotype profiles
-    VALID_PARAMS = ['tm_coop', 'tm_K1']
+    VALID_PARAMS = ['tm_coop',
+                    'tm_K1', 'tm_k_12', 'tm_K2', 'tm_k_23',
+                    'tm_K3', 'tm_k_34', 'tm_K4', 'tm_k_41']
 
     def __init__(self, parent_tm, binding_site, index, **tm_params):
         """ A single tropomyosin site, paired to a binding site
@@ -66,20 +68,20 @@ class TmSite:
         self.binding_site.tm_site = self
         self.state = 0
         # ## Kinetics from Tanner 2007, 2012, and thesis
-        K1 = 2.65e7  # Sparrow 2004 # per mole Ca
+        K1 = 1e5  # per mole Ca
         K2 = 10  # unit-less
-        K3 = 10  # TODO determine equilibrium
+        K3 = 10  # unit-less
         K4 = 1e6  # unit-less
-        k_12 = 4e7  # Sparrow 2004 # 1e8  # per mole Ca per sec # TODO verify MR
+        k_12 = 5e5  # per mole Ca per sec
         k_23 = 10  # per sec
-        k_34 = 10  # TODO determine units
-        k_41 = 50  # per sec
+        k_34 = 10  # per sec
+        k_41 = 5  # per sec
         s_per_ms = 1e-3  # seconds per millisecond
         k_12 *= s_per_ms  # convert rates from
         k_23 *= s_per_ms  # occurrences per second
         k_34 *= s_per_ms  # to
         k_41 *= s_per_ms  # occurrences per ms
-        coop = 1  # cooperative multiplier
+        coop = 100  # cooperative multiplier
         self._K1, self._K2, self._K3, self._K4 = K1, K2, K3, K4
         self._k_12, self._k_23, self._k_34, self._k_41 = k_12, k_23, k_34, k_41
         self._coop = coop
@@ -96,17 +98,12 @@ class TmSite:
                 probability = float(profiles[i]['iso_p'])
                 cum_sum += probability
                 i += 1
-            tm_params = tm_params[profiles[i - 1]].copy()  # Note that we have to copy the profile - object logic...
+            tm_params = tm_params['tm_iso'][i - 1].copy()  # actually select the params and proceed as normal
+            tm_params.pop('iso_p')
 
         self.constants = {}
 
-        if 'tm_coop' in tm_params:
-            self._coop = tm_params.pop('tm_coop')
-        self.constants['tm_coop'] = self._coop
-
-        if 'tm_K1' in tm_params:
-            self._K1 = tm_params.pop('tm_K1')
-        self.constants['tm_K1'] = self._K1
+        self._process_params(tm_params)
 
         for param in tm_params.keys():
             print("Unknown tm_param:", param)
@@ -269,20 +266,28 @@ class TmSite:
         # coop = self._coop if self.subject_to_cooperativity else 1
         # forward *= coop
 
-        forward = self._k_12 * self.ca * self._coop
+        coop = self._coop if self.subject_to_cooperativity else 1
+        forward = self._k_12 * self.ca * coop
 
         return forward
 
     def _r21(self):
         """Rate of Ca detachment from TnC, conditional on [Ca]"""
+        # k_21 = self._k_12 / self._K1
+        # reverse = k_21 * self._concentrations['bound_tm']
+
         k_21 = self._k_12 / self._K1
-        reverse = k_21  # * self._concentrations['bound_tm']
+        reverse = k_21
+
         return reverse
 
     def _r23(self):
         """Rate of TnI TnC interaction"""
-        forward = self._k_23
+        # forward = self._k_23
+        # concentration of tm = TnI?
+        # forward *= (self._concentrations['bound_tm'] + self._concentrations['free_tm'])
 
+        forward = self._k_23
         coop = self._coop if self.subject_to_cooperativity else 1
         forward *= coop
 
@@ -290,11 +295,9 @@ class TmSite:
 
     def _r32(self):
         """Rate of TnI TnC interaction reversal"""
-        k_32 = self._k_23 / self._K2
-        reverse = k_32
+        forward = self._k_23
+        reverse = forward / self._K2
 
-        # forward = self._r23()
-        # reverse = forward / self._K2
         return reverse
 
     def _r34(self):
@@ -307,23 +310,29 @@ class TmSite:
 
     def _r43(self):
         """Rate of tropomyosin movement - Covering"""
-        return self._k_34 / self._K3
+        reverse = self._k_34 / self._K3
+
+        return reverse
 
     def _r41(self):
         """Rate of Actin site covering due to Ca disassociation induced TnI TnC disassociation"""
-        forward = self._k_41  # * self._concentrations['bound_tm']
+        # forward = self._k_41 * self.ca * self._concentrations['bound_tm']
+
+        forward = self._k_41
+
         return forward
 
     def _r14(self):
         """Rate of simultaneous Ca binding, TnI TnC association and tropomyosin movement.
         Should be quite low.
         """
-        k_13 = self._k_41 / self._K4
-        reverse = k_13 * self.ca * self.ca * self._concentrations['free_tm']
+        # k_14 = self._k_41 / self._K4
+        # reverse = k_14  * self.ca * self.ca * self._concentrations['free_tm']
 
-        # reverse *= self._r23()
+        forward = self._k_41
+        reverse = forward / self._K4
 
-        return 0
+        return reverse
 
     def _prob(self, rate):
         """ Convert a rate to a probability, based on the current timestep
@@ -381,6 +390,63 @@ class TmSite:
         assert self.state in (0, 1, 2, 3), "Tropomyosin state has invalid value"
 
         return trans_word
+
+    def _process_params(self, tm_params):
+        # cooperative multiplier
+        key = 'tm_coop'
+        if key in tm_params.keys():
+            self._coop = tm_params.pop(key)
+        self.constants[key] = self._coop
+
+        # ## First step ---------------------------
+        # K1
+        key = 'tm_K1'
+        if key in tm_params.keys():
+            self._K1 = tm_params.pop(key)
+        self.constants[key] = self._K1
+
+        # forward rate - k_12
+        key = 'tm_k_12'
+        if key in tm_params.keys():
+            self._k_12 = tm_params.pop(key)
+        self.constants[key] = self._k_12
+
+        # ## Second step ---------------------------
+        # K2
+        key = 'tm_K2'
+        if key in tm_params.keys():
+            self._K2 = tm_params.pop(key)
+        self.constants[key] = self._K2
+
+        # forward rate - k_23
+        key = 'tm_k_23'
+        if key in tm_params.keys():
+            self._k_23 = tm_params.pop(key)
+        self.constants[key] = self._k_23
+
+        # ## Third step ---------------------------
+        key = 'tm_K3'
+        if key in tm_params.keys():
+            self._K3 = tm_params.pop(key)
+        self.constants[key] = self._K3
+
+        # forward rate - k_34
+        key = 'tm_k_34'
+        if key in tm_params.keys():
+            self._k_34 = tm_params.pop(key)
+        self.constants[key] = self._k_34
+
+        # ## Fourth step (3 -> 0) -----------------
+        key = 'tm_K4'
+        if key in tm_params.keys():
+            self._K4 = tm_params.pop(key)
+        self.constants[key] = self._K4
+
+        # forward rate - k_41
+        key = 'tm_k_41'
+        if key in tm_params.keys():
+            self._k_41 = tm_params.pop(key)
+        self.constants[key] = self._k_41
 
 
 class Tropomyosin:
@@ -539,20 +605,20 @@ class Tropomyosin:
 
     def _spread_activation(self):
         """"Spread activation along the filament"""
-        # If nothing is in state 2, we're done
-        if max([site.state for site in self.sites]) < 2:
+        # If nothing is in state 3, we're done
+        if max([site.state for site in self.sites]) < 3:
             return
         # Find all my axial locations
         locs = self.axial_locations
         # Chunk through each site
         for site in self.sites:
-            if site.state == 2:
+            if site.state == 3:
                 loc = site.axial_location
                 span = site.span
                 near_inds = np.nonzero(np.abs(locs - loc) < span)[0]
                 near = [self.sites[index] for index in near_inds]
                 for n_site in near:
-                    if n_site.state != 2:
+                    if n_site.state == 0:
                         n_site.state = 1
         return
 
