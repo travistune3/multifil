@@ -8,11 +8,7 @@ Created by Dave Williams on 2017-12-03.
 from _operator import indexOf
 
 import numpy as np
-
 random = np.random
-
-# noinspection PyArgumentList
-random.seed()
 
 
 class TmSite:
@@ -58,6 +54,9 @@ class TmSite:
         index: int
             where this tm site is along the tm chain
         """
+        # noinspection PyArgumentList
+        random.seed()
+
         # ## Who are you and where do you come from?
         self.parent_tm = parent_tm
         self.index = index
@@ -71,7 +70,7 @@ class TmSite:
         K1 = 1e5  # per mole Ca
         K2 = 10  # unit-less
         K3 = 10  # unit-less
-        K4 = 1e6  # unit-less
+        K4 = 1e6  # moles Ca
         k_12 = 5e5  # per mole Ca per sec
         k_23 = 10  # per sec
         k_34 = 10  # per sec
@@ -331,6 +330,7 @@ class TmSite:
 
         forward = self._k_41
         reverse = forward / self._K4
+        reverse *= self.ca
 
         return reverse
 

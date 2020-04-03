@@ -12,15 +12,12 @@ import numpy as np
 import warnings
 import numpy.random as random
 
-# noinspection PyArgumentList
-random.seed()  # Ensure proper seeding
-
 
 class Titin:
     """This is all about the titin filament"""
 
     # kwargs that can be used to edit titin phenotype
-    # TODO titin will eventually be also accept phenotype profiles
+    # titin can also accept phenotype profiles
     VALID_PARAMS = ['ti_a', 'ti_b']
 
     def __init__(self, parent_lattice, index, thick_face, thin_face, **ti_params):
@@ -36,6 +33,9 @@ class Titin:
         Returns:
             None
         """
+        # noinspection PyArgumentList
+        random.seed()  # Ensure proper seeding
+
         # Name of the titin molecule
         self.index = index
         self.address = ('titin', index)
