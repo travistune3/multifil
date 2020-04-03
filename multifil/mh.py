@@ -657,7 +657,7 @@ class Crossbridge(Head):
         self.bound_to = None  # None if unbound, BindingSite object otherwise
 
         """Handle mh_params"""
-        # ## Handle tm_isomer calculations
+        # ## Handle mh_isomer calculations
         if 'mh_iso' in mh_params.keys():  # !!! This means we don't actually have settings to pass yet !!!
             profiles = mh_params['mh_iso']
             cum_sum = 0

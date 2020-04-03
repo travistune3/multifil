@@ -54,7 +54,7 @@ class Titin:
         self.b = 0.0045
 
         """Handle key-worded ti_params - overriding set values"""
-        # ## Handle tm_isomer calculations
+        # ## Handle ti_isomer calculations
         if 'ti_iso' in ti_params.keys():  # !!! This means we don't actually have settings to pass yet !!!
             profiles = ti_params['ti_iso']
             cum_sum = 0
