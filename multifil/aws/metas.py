@@ -1,10 +1,11 @@
 #!/usr/bin/env python
 # encoding: utf-8
+# noinspection PyUnresolvedReferences
 """
 metas.py - create the meta file that will configure a run
 
-This was originally included in the run.py file, but has grown compliated
-enough to warrent the creation of a fully separate management system
+This was originally included in the run.py file, but has grown complicated
+enough to warrant the creation of a fully separate management system
 
 metas.emit produces a meta file that describes what we want a run to do: the
 values of the z_line, lattice spacing, and actin permissiveness through the run
@@ -13,11 +14,11 @@ and where it will be stored after completion.
 Example
 --------
 >>> freq, phase = 10, .8
->>> timetrace = metas.time(.1, 10)
->>> zline = metas.zline_workloop(1250, 25, freq, timetrace)
+>>> time_trace = metas.time_trace(.1, 10)
+>>> zline = metas.zline_workloop(1250, 25, freq, time_trace)
 >>> activation = metas.actin_permissiveness_workloop(freq, phase, 10, 3, 3,
-...  timetrace)
->>> metas.emit('./', None, timetrace, z_line=zline,
+...  time_trace)
+>>> metas.emit('./', None, time_trace, z_line=zline,
 ...  actin_permissiveness=activation, write=False, phase=phase, freq=freq)
 {'actin_permissiveness': None,
 ...  'actin_permissiveness_func': None,
@@ -41,10 +42,9 @@ import uuid
 import ujson as json
 import numpy as np
 
-from .. import hs
 
-## Define traces to be used in runs
-def time(timestep_length, run_length_in_ms):
+# ## Define traces to be used in runs
+def time_trace(timestep_length, run_length_in_ms):
     """Create a time series in ms. This is easily doable through other methods
     but this documents it a bit.
 
@@ -55,6 +55,7 @@ def time(timestep_length, run_length_in_ms):
     """
     return np.arange(0, run_length_in_ms, timestep_length)
 
+
 def zline_workloop(offset, amp, freq, time):
     """A sinusoidal oscillatory length trace.
 
@@ -64,23 +65,25 @@ def zline_workloop(offset, amp, freq, time):
         freq: frequency of oscillation
         time: time trace in ms to provide length trace for
     """
-    period = 1000/freq
-    zline = offset + 0.5 * amp * np.cos(2*np.pi*time/period)
+    period = 1000 / freq
+    zline = offset + 0.5 * amp * np.cos(2 * np.pi * time / period)
     return zline
+
 
 def zline_forcevelocity(L0, hold_time, L0_per_sec, time):
     """Takes initial length, time to hold there in ms, & shortening in L0/sec"""
     # Things we need to know for the shortening
-    number_of_timesteps = len(time) #for ease of reading
+    number_of_timesteps = len(time)  # for ease of reading
     timestep_length = np.diff(time)[0]
-    hold_steps = int(hold_time/timestep_length)
+    hold_steps = int(hold_time / timestep_length)
     shorten_steps = number_of_timesteps - hold_steps
-    nm_per_step = timestep_length * 1/1000 * L0_per_sec * L0
+    nm_per_step = timestep_length * 1 / 1000 * L0_per_sec * L0
     # Construct the length signal
-    zline = [L0 for i in range(hold_steps)]
+    zline = [L0 for _ in range(hold_steps)]
     for i in range(shorten_steps):
         zline.append(zline[-1] - nm_per_step)
     return zline
+
 
 def actin_permissiveness_workloop(freq, phase, stim_duration,
                                   influx_time, half_life, time):
@@ -89,50 +92,51 @@ def actin_permissiveness_workloop(freq, phase, stim_duration,
     the half-life of the Ca2+ out-pumping.
     """
     # Convert frequency to period in ms
-    period = 1000/freq
+    period = 1000 / freq
     # Things we need to know for the shape of a single cycle
-    decay_rate = np.log(1/2)/half_life
-    growth_rate = 0.5*influx_time
+    decay_rate = np.log(1 / 2) / half_life
+    growth_rate = 0.5 * influx_time
     max_signal = 1.0
     # Things we need to know for the cyclical nature of the signal
-    number_of_timesteps = len(time) #for ease of reading
+    number_of_timesteps = len(time)  # for ease of reading
     timestep_length = np.diff(time)[0]
-    cycle_step_number = int(period/timestep_length)
+    cycle_step_number = int(period / timestep_length)
     cycle_time_trace = np.arange(0, period, timestep_length)
     try:
         steps_before_stim = np.argwhere(
-            cycle_time_trace>=(period*(phase%1)))[0][0]
+            cycle_time_trace >= (period * (phase % 1)))[0][0]
     except IndexError:
         assert 0 == len(np.argwhere(
-            cycle_time_trace>=(period*(phase%1))))
-        steps_before_stim = 0 #b/c phase was 0.999 or similar
-    stim_step_number = int(stim_duration/timestep_length)
+            cycle_time_trace >= (period * (phase % 1))))
+        steps_before_stim = 0  # b/c phase was 0.999 or similar
+    stim_step_number = int(stim_duration / timestep_length)
     no_stim_step_number = cycle_step_number - stim_step_number
     # Things we need to know for smoothing
-    sd = 1 #standard deviation of smoothing window in ms
-    sw = 3 #smoothing window in ms
-    base_normal = np.exp(-np.arange(-sw,sw,timestep_length)**2/(2*sd**2))
-    normal = base_normal/sum(base_normal)
+    sd = 1  # standard deviation of smoothing window in ms
+    sw = 3  # smoothing window in ms
+    base_normal = np.exp(-np.arange(-sw, sw, timestep_length) ** 2 / (2 * sd ** 2))
+    normal = base_normal / sum(base_normal)
     # Step through, generating signal
     out = [0.1]
     for i in range(steps_before_stim):
         out.append(out[-1])
-    while len(out)<(4*cycle_step_number+number_of_timesteps):
+    while len(out) < (4 * cycle_step_number + number_of_timesteps):
         for i in range(stim_step_number):
-            growth = timestep_length * out[-1] * (growth_rate) *\
-                    (1-out[-1]/max_signal)
-            out.append(out[-1]+growth)
+            growth = timestep_length * out[-1] * growth_rate * \
+                     (1 - out[-1] / max_signal)
+            out.append(out[-1] + growth)
         for i in range(no_stim_step_number):
             decay = timestep_length * out[-1] * decay_rate
-            out.append(out[-1]+decay)
+            out.append(out[-1] + decay)
     # Smooth signal
     out = np.convolve(normal, out)
-    return out[2*cycle_step_number:2*cycle_step_number+number_of_timesteps]
+    return out[2 * cycle_step_number:2 * cycle_step_number + number_of_timesteps]
 
 
-## Configure a run via a saved meta file
-def emit(path_local, path_s3, time,  poisson=0.0, ls=None, z_line=None,
-    actin_permissiveness=None, comment = None, write = True, **kwargs):
+# ## Configure a run via a saved meta file
+def emit(path_local, path_s3, time, poisson=0.0, ls=None, z_line=None, actin_permissiveness=None, comment=None,
+         write=True, **kwargs):
+    # noinspection PyTypeChecker
     """Produce a structured JSON file that will be consumed to create a run
 
     Import emit into an interactive workspace and populate a directory with
@@ -175,7 +179,7 @@ def emit(path_local, path_s3, time,  poisson=0.0, ls=None, z_line=None,
 
     Returns
     -------
-    rund: dict
+    run_d: dict
         Copy of run dictionary saved to disk as json.
 
     Examples
@@ -194,25 +198,25 @@ def emit(path_local, path_s3, time,  poisson=0.0, ls=None, z_line=None,
     ...  'z_line': None,
     ...  'z_line_func': None}
     """
-    rund = {}
+    run_d = {}
     name = str(uuid.uuid1())
-    ## Build dictionary
-    rund['name'] = name
-    rund['comment'] = comment
-    rund['path_local'] = path_local
-    rund['path_s3'] = path_s3
-    rund['poisson_ratio'] = poisson
-    rund['lattice_spacing'] = ls
-    rund['z_line'] = z_line
-    rund['actin_permissiveness'] = actin_permissiveness
-    rund['timestep_length'] = np.diff(time)[0]
-    rund['timestep_number'] = len(time)
-    ## Include kwargs
+    # ## Build dictionary
+    run_d['name'] = name
+    run_d['comment'] = comment
+    run_d['path_local'] = path_local
+    run_d['path_s3'] = path_s3
+    run_d['poisson_ratio'] = poisson
+    run_d['lattice_spacing'] = ls
+    run_d['z_line'] = z_line
+    run_d['actin_permissiveness'] = actin_permissiveness
+    run_d['timestep_length'] = np.diff(time)[0]
+    run_d['timestep_number'] = len(time)
+    # ## Include kwargs
     for k in kwargs:
-        rund[k] = kwargs[k]
-    ## Write out the run description
+        run_d[k] = kwargs[k]
+    # ## Write out the run description
     if write is True:
-        output_filename = os.path.join(path_local, name+'.meta.json')
-        with open(output_filename , 'w') as metafile:
-            json.dump(rund, metafile, indent=4)
-    return rund
+        output_filename = os.path.join(path_local, name + '.meta.json')
+        with open(output_filename, 'w') as metafile:
+            json.dump(run_d, metafile, indent=4)
+    return run_d

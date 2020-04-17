@@ -25,8 +25,8 @@ class plot_hs:
         # Get needed info from the half-sarcomere
         self.thick_xlocs = [t.axial for t in self.hs.thick]
         self.thin_xlocs = [t.axial for t in self.hs.thin]
-        self.thick_s = [t.axialforce() for t in self.hs.thick]
-        self.thin_s = [t.axialforce() for t in self.hs.thin]
+        self.thick_s = [t.axial_force() for t in self.hs.thick]
+        self.thin_s = [t.axial_force() for t in self.hs.thin]
         self.z_line = self.hs.z_line
         ls = self.hs.lattice_spacing
         # Calculate y and z locations of fils

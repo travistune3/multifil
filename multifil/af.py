@@ -13,12 +13,14 @@ import numpy as np
 
 class BindingSite:
     """A singular globular actin site"""
+
     def __init__(self, parent_thin_fil, index, orientation):
         """Create a binding site on the thin filament
 
         Parameters:
             parent_thin_fil: the calling thin filament instance
             index: the axial index on the parent thin filament
+        Properties:
             address: largest to most local, indices for finding this
             orientation: select between six orientations (0-5)
         """
@@ -29,22 +31,22 @@ class BindingSite:
         # Use the passed orientation index to choose the correct
         # orientation vector according to schema in ThinFilament docstring
         orientation_vectors = ((0.866, -0.5), (0, -1), (-0.866, -0.5),
-                (-0.866, 0.5), (0, 1), (0.866, 0.5))
+                               (-0.866, 0.5), (0, 1), (0.866, 0.5))
         self.orientation = orientation_vectors[orientation]
         # Start off in an activated state, fully open to binding
         self.permissiveness = 1.0
         # Create attributes to store things not yet present
-        self.bound_to = None # None if unbound, Crossbridge object otherwise
+        self.bound_to = None  # None if unbound, Crossbridge object otherwise
 
     def __str__(self):
         """Return the current situation of the binding site"""
-        ident = ['Binding Site #' + str(self.index) + ' Info']
-        ident.append(14 * '=')
-        ident.append('State: ' + str(self.state))
+        result = ['Binding Site #' + str(self.index) + ' Info']
+        result.append(14 * '=')
+        result.append('State: ' + str(self.state))
         if self.state != 0:
-            ident.append('Forces: ' + str(self.axialforce())
-                         + '/' + str(self.radialforce()))
-        return '\n'.join(ident)
+            result.append('Forces: ' + str(self.axial_force())
+                          + '/' + str(self.radial_force()))
+        return '\n'.join(result)
 
     def to_dict(self):
         """Create a JSON compatible representation of the binding site
@@ -71,17 +73,17 @@ class BindingSite:
         """
         # Check for index mismatch
         read, current = tuple(bsd['address']), self.address
-        assert read==current, "index mismatch at %s/%s"%(read, current)
+        assert read == current, "index mismatch at %s/%s" % (read, current)
         # Local keys
         self.orientation = bsd['orientation']
         self.permissiveness = bsd['permissiveness']
         if bsd['bound_to'] is not None:
-            self.bound_to = self.parent_thin.parent_lattice.\
-                    resolve_address(bsd['bound_to'])
+            self.bound_to = self.parent_thin.parent_lattice. \
+                resolve_address(bsd['bound_to'])
         else:
             self.bound_to = bsd['bound_to']
 
-    def axialforce(self, axial_location=None):
+    def axial_force(self, axial_location=None):
         """Return the axial force of the bound cross-bridge, if any
 
         Parameters:
@@ -92,9 +94,9 @@ class BindingSite:
         if self.bound_to is None:
             return 0.0
         # Axial force on actin is equal but opposite
-        return -self.bound_to.axialforce(tip_axial_loc = axial_location)
+        return -self.bound_to.axial_force(tip_axial_loc=axial_location)
 
-    def radialforce(self):
+    def radial_force(self):
         """Radial force vector of the bound cross-bridge, if any
 
         Returns:
@@ -102,7 +104,7 @@ class BindingSite:
         """
         if self.bound_to is None:
             return np.array([0.0, 0.0])
-        force_mag = -self.bound_to.radialforce() # Equal but opposite
+        force_mag = -self.bound_to.radial_force()  # Equal but opposite
         return np.multiply(force_mag, self.orientation)
 
     def bind_to(self, crossbridge):
@@ -111,7 +113,7 @@ class BindingSite:
 
     def unbind(self):
         """Kill off any link to a crossbridge"""
-        assert(self.bound_to is not None) # Else why try to unbind?
+        assert (self.bound_to is not None)  # Else why try to unbind?
         self.bound_to = None
 
     @property
@@ -141,6 +143,7 @@ class ThinFace:
         ||     m1     ||      Y-->
         ================
     """
+
     def __init__(self, parent_thin_fil, orientation, index, binding_sites):
         """Create the thin filament face
 
@@ -148,6 +151,7 @@ class ThinFace:
             parent_thin_fil: the thin filament on which this face sits
             orientation: which myosin face is opposite this face (0-5)
             index: location on the thin filament this face occupies (0-2)
+        Properties:
             address: largest to most local, indices for finding this
             binding_sites: links to the actin binding sites on this face
         """
@@ -181,13 +185,13 @@ class ThinFace:
         """
         # Check for index mismatch
         read, current = tuple(tfd['address']), self.address
-        assert read==current, "index mismatch at %s/%s"%(read, current)
+        assert read == current, "index mismatch at %s/%s" % (read, current)
         # Local keys
         self.orientation = tfd['orientation']
         self.thick_face = self.parent_thin.parent_lattice.resolve_address(
             tfd['thick_face'])
         # Sub-structure keys
-        self.binding_sites = [self.parent_thin.resolve_address(bsa) \
+        self.binding_sites = [self.parent_thin.resolve_address(bsa)
                               for bsa in tfd['binding_sites']]
 
     def nearest(self, axial_location):
@@ -218,14 +222,14 @@ class ThinFace:
             dists = np.abs((face_locs[prev_index] - axial_location,
                             face_locs[next_index] - axial_location))
         else:
-            return self.binding_sites[prev_index] # If at end, return end
+            return self.binding_sites[prev_index]  # If at end, return end
         # If prior site was closer, give it, else give next
         if dists[0] < dists[1]:
             return self.binding_sites[prev_index]
         else:
             return self.binding_sites[next_index]
 
-    def radialforce(self):
+    def radial_force(self):
         """What is the radial force this face experiences?
 
         A side note: This was where the attempt to write the model out in
@@ -265,12 +269,12 @@ class ThinFace:
         if self.thick_face is None:
             raise AttributeError("Thick filament not assigned yet.")
         # Now find the forces on each cross-bridge
-        radial_forces = [site.radialforce() for site in self.binding_sites]
+        radial_forces = [site.radial_force() for site in self.binding_sites]
         return np.sum(radial_forces, 1)
 
     def set_thick_face(self, myosin_face):
         """Link to the relevant myosin filament."""
-        assert(self.orientation == myosin_face.index)
+        assert (self.orientation == myosin_face.index)
         self.thick_face = myosin_face
         return
 
@@ -314,6 +318,7 @@ class ThinFilament:
     node is adjacent to the Z-line.
     [Tanner2007]:http://dx.doi.org/10.1371/journal.pcbi.0030115
     """
+
     def __init__(self, parent_lattice, index, face_orientations, start=0):
         """Initialize the thin filament
 
@@ -354,37 +359,38 @@ class ThinFilament:
         self.address = ('thin_fil', self.index)
         # TODO The creation of the monomer positions and angles should be refactored into a static function of similar.
         # Figure out axial positions, see Howard pg 125
-        mono_per_poly = 26 # actin monomers in an actin polymer unit
-        poly_per_fil = 15 # actin polymers in a thin filament
-        polymer_base_length = 72.0 # nm per polymer unit length
-        polymer_base_turns = 12.0 # revolutions per polymer
-        rev = 2*np.pi # one revolution
+        mono_per_poly = 26  # actin monomers in an actin polymer unit
+        poly_per_fil = 15  # actin polymers in a thin filament
+        polymer_base_length = 72.0  # nm per polymer unit length
+        polymer_base_turns = 12.0  # revolutions per polymer
+        rev = 2 * np.pi  # one revolution
         pitch = polymer_base_turns * rev / mono_per_poly
         rise = polymer_base_length / mono_per_poly
         # Monomer positions start near the m-line
         monomer_positions = [(
-            self.z_line - mono_per_poly*poly_per_fil*rise) + m*rise
-            for m in range(mono_per_poly*poly_per_fil)]
-        monomer_angles = [(((m+start+1) % mono_per_poly) * pitch) % rev
-                for m in range(mono_per_poly * poly_per_fil)]
+                                     self.z_line - mono_per_poly * poly_per_fil * rise) + m * rise
+                             for m in range(mono_per_poly * poly_per_fil)]
+        monomer_angles = [(((m + start + 1) % mono_per_poly) * pitch) % rev
+                          for m in range(mono_per_poly * poly_per_fil)]
         # Convert face orientations to angles, then to angles from 0 to 2pi
         orientation_vectors = ((0.866, -0.5), (0, -1.0), (-0.866, -0.5),
-                (-0.866, 0.5), (0, 1.0), (0.866, 0.5))
+                               (-0.866, 0.5), (0, 1.0), (0.866, 0.5))
         face_vectors = [orientation_vectors[o] for o in face_orientations]
         face_angles = [np.arctan2(v[1], v[0]) for v in face_vectors]
         face_angles = [v + rev if (v < 0) else v for v in face_angles]
         # Find which monomers are opposite each face
-        wiggle = rev/24 # count faces within 15 degrees of opposite
+        wiggle = rev / 24  # count faces within 15 degrees of opposite
         mono_in_each_face = [np.nonzero(np.abs(np.subtract(monomer_angles,
-            face_angles[i]))<wiggle)[0] for i in range(len(face_angles))]
+                                                           face_angles[i])) < wiggle)[0] for i in
+                             range(len(face_angles))]
         # This is [(index_to_face_1, ...), (index_to_face_2, ...), ...]
         # Translate monomer position to binding site position
         axial_by_face = [[monomer_positions[mono_ind] for mono_ind in face]
-                for face in mono_in_each_face]
+                         for face in mono_in_each_face]
         axial_flat = np.sort(np.hstack(axial_by_face))
         # Tie the nodes on each face into the flat axial locations
-        node_index_by_face = np.array([[np.nonzero(axial_flat == l)[0][0]
-            for l in f] for f in axial_by_face])
+        node_index_by_face = np.array([[np.nonzero(axial_flat == loc)[0][0]
+                                        for loc in f] for f in axial_by_face])
         face_index_by_node = np.tile(None, len(axial_flat))
         for face_ind in range(len(node_index_by_face)):
             for node_ind in node_index_by_face[face_ind]:
@@ -397,17 +403,17 @@ class ThinFilament:
         self.thin_faces = []
         for face_index in range(len(node_index_by_face)):
             face_binding_sites = ([self.binding_sites[i] for i in
-                node_index_by_face[face_index]])
+                                   node_index_by_face[face_index]])
             orientation = face_orientations[face_index]
             self.thin_faces.append(
                 ThinFace(self, orientation, face_index, face_binding_sites))
-        del(orientation, face_binding_sites)
+        del (orientation, face_binding_sites)
         # Remember the axial locations, both current and rest
         self.axial = axial_flat
         self.rests = np.diff(np.hstack([self.axial, self.z_line]))
         # Other thin filament properties to remember
         self.number_of_nodes = len(self.binding_sites)
-        self.thick_faces = None # Set after creation of thick filaments
+        self.thick_faces = None  # Set after creation of thick filaments
         self.k = 1743
 
     def to_dict(self):
@@ -424,16 +430,16 @@ class ThinFilament:
             k: stiffness of the thin filament
             number_of_nodes: number of binding sites
         """
-        thind = self.__dict__.copy()
-        thind.pop('index')
-        thind.pop('parent_lattice') # TODO: Spend a P on an id for the lattice
-        thind['thick_faces'] = [tf.address for tf in thind['thick_faces']]
-        thind['thin_faces'] = [tf.to_dict() for tf in thind['thin_faces']]
-        thind['axial'] = list(thind['axial'])
-        thind['rests'] = list(thind['rests'])
-        thind['binding_sites'] = [bs.to_dict() for bs in \
-                                  thind['binding_sites']]
-        return thind
+        thin_d = self.__dict__.copy()
+        thin_d.pop('index')
+        thin_d.pop('parent_lattice')  # TODO: Spend a P on an id for the lattice
+        thin_d['thick_faces'] = [tf.address for tf in thin_d['thick_faces']]
+        thin_d['thin_faces'] = [tf.to_dict() for tf in thin_d['thin_faces']]
+        thin_d['axial'] = list(thin_d['axial'])
+        thin_d['rests'] = list(thin_d['rests'])
+        thin_d['binding_sites'] = [bs.to_dict() for bs in
+                                  thin_d['binding_sites']]
+        return thin_d
 
     def from_dict(self, td):
         """ Load values from a thin filament dict. Values read in correspond
@@ -441,7 +447,7 @@ class ThinFilament:
         """
         # Check for index mismatch
         read, current = tuple(td['address']), self.address
-        assert read==current, "index mismatch at %s/%s"%(read, current)
+        assert read == current, "index mismatch at %s/%s" % (read, current)
         # Local keys
         self.axial = np.array(td['axial'])
         self.rests = np.array(td['rests'])
@@ -464,7 +470,7 @@ class ThinFilament:
         elif address[0] == 'bs':
             return self.binding_sites[address[2]]
         import warnings
-        warnings.warn("Unresolvable address: %s"%str(address))
+        warnings.warn("Unresolvable address: %s" % str(address))
 
     def set_thick_faces(self, thick_faces):
         """Set the adjacent thick faces and associated values
@@ -506,13 +512,13 @@ class ThinFilament:
             axial_forces: a list of the XB axial force at each node 
         """
         if axial_locations == None:
-            axial_forces = [site.axialforce() for site in self.binding_sites]
+            axial_forces = [site.axial_force() for site in self.binding_sites]
         else:
-            axial_forces = [site.axialforce(loc) for
-                    site,loc in zip(self.binding_sites, axial_locations)]
+            axial_forces = [site.axial_force(loc) for
+                            site, loc in zip(self.binding_sites, axial_locations)]
         return axial_forces
 
-    def axialforce(self, axial_locations=None):
+    def axial_force(self, axial_locations=None):
         """Return a list of axial forces at each binding site node location
 
         This returns the force at each node location (including the z-disk
@@ -535,10 +541,10 @@ class ThinFilament:
     def settle(self, factor):
         """Reduce the total axial force on the system by moving the sites"""
         # Total axial force on each point
-        forces = self.axialforce()
+        forces = self.axial_force()
         # Individual displacements needed to balance force
-        isolated = factor*forces/self.k
-        isolated[0] *= 2 # First node has spring on only one side
+        isolated = factor * forces / self.k
+        isolated[0] *= 2  # First node has spring on only one side
         # Cumulative displacements, working back from z-disk
         cumulative = np.flipud(np.cumsum(np.flipud(isolated)))
         # New axial locations
@@ -549,18 +555,18 @@ class ThinFilament:
         """Radial force produced by XBs at each binding site node 
 
         Parameters:
-            None
+            self
         Returns
             radial_forces: a list of (f_y, f_z) force vectors
         """
-        radial_forces = [nd.radialforce() for nd in self.binding_sites]
+        radial_forces = [nd.radial_force() for nd in self.binding_sites]
         return radial_forces
 
     def radial_force_of_filament(self):
         """The sum of the radial force experienced by this filament
 
         Parameters:
-            None
+            self
         Returns:
             radial_force: a single (f_y, f_z) vector
         """
@@ -609,7 +615,7 @@ class ThinFilament:
             None
         """
         # You aren't allowed to change the number of nodes
-        assert(len(flat_axial_locs) == len(self.axial))
+        assert (len(flat_axial_locs) == len(self.axial))
         self.axial = flat_axial_locs
 
     @property
