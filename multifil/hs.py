@@ -522,6 +522,23 @@ class hs:
         for data, thin in zip(sd['thin'], self.thin):
             thin.from_dict(data)
 
+    def print_constants(self, print_address=False):
+        """prints all settings in an organized fashion"""
+        for f_type, filaments in self.constants.items():
+            print(f_type)
+            for address, filament in filaments.items():
+                address = "\t" + str(address)
+                if not print_address:
+                    address = ""
+                print(address, "\t", end="")
+
+                for constant, value in filament.items():
+                    print(constant, "=", value, end=" ")
+                if len(filaments.keys()) < 50:
+                    print()
+                else:
+                    print(", ", end="\t")
+
     def run(self, time_steps=100, callback=None, bar=True, every=5):
         """Run the model for the specified number of time_steps
 
@@ -562,7 +579,7 @@ class hs:
         for i in range(time_steps):
             try:
                 self.timestep()
-                output = output.append(callback())
+                output.append(callback())
                 # Update us on how it went
                 toc = int((time.time() - tic) / (i + 1) * (time_steps - i - 1))
                 proc_name = mp.current_process().name

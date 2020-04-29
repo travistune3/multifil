@@ -461,7 +461,7 @@ class ThickFilament:
         for face in self.thick_faces:
             for xb in face.xb:
                 constants = xb.constants
-                xb_index = str(self.index) + "_" + str(xb.index)
+                xb_index = str(self.index) + "_" + str(xb.parent_face.index) + "_" + str(xb.index)
                 self.mh_constants[xb_index] = constants
 
         self.mf_constants = {}  # A dictionary containing constants able to be overridden by the user
