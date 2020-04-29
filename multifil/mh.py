@@ -737,8 +737,14 @@ class Crossbridge(Head):
                                                         actin_state)
             # Process changes to bound state
             if trans == '12':
-                self.bound_to = actin_site
-                actin_site.bind_to(self)
+                self.bound_to = actin_site.bind_to(self)
+                if self.bound_to is None:
+                    self.state = 'free'  # failed to bind TODO fix this garbage
+                    import sys
+                    msg = "\n---successfully denied---\n"
+                    sys.stdout.write(msg)
+                    sys.stdout.flush()
+                # assert(self.bound_to.bound_to is not None)
             else:
                 assert (trans is None), 'Bound state mismatch'
         else:
@@ -750,8 +756,8 @@ class Crossbridge(Head):
                                                         actin_state)
             # Process changes to the bound state
             if trans in {'21', '31'}:
-                self.bound_to.unbind()
-                self.bound_to = None
+                self.bound_to = self.bound_to.unbind()
+                assert (self.bound_to is None)
             else:
                 assert (trans in {'23', '32', None}), 'State mismatch'
         return trans

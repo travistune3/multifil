@@ -39,7 +39,7 @@ class Crown:
         # vectors that the crown uses to pass back proper radial forces
         # NB: vectors are ((face_0,face_2, face_3), (face_1, face_3, face_5))
         crown_vectors = (((-0.886, 0.5), (0.866, 0.5), (0, -1)),
-                ((0, 1), (0.866, -0.5), (-0.866, -0.5)))
+                         ((0, 1), (0.866, -0.5), (-0.866, -0.5)))
         self.orientations = crown_vectors[orientations]
 
     def to_dict(self):
@@ -131,7 +131,7 @@ class ThickFace:
     Further discussion is located in the "ThickFilament" documentation.
     """
     def __init__(self, parent_filament, axial_locations, thin_face,
-            index, start, **mh_params):
+                 index, start, **mh_params):
         """Instantiate the thick filament face with its heads
 
         Parameters:
@@ -192,7 +192,7 @@ class ThickFace:
         thick_bnd = ' ' + ''.join([xb_string[xb.numeric_state]
                                   for xb in self.xb])
         thin_bnd = 12*' ' + ''.join([xb_string[act.state]
-                                for act in self.thin_face.binding_sites])
+                                     for act in self.thin_face.binding_sites])
         thin = 12*' ' + len(self.thin_face.binding_sites) * '-' + '|'
         return thick + '\n' + thick_bnd + '\n' + thin_bnd + '\n' + thin + '\n'
 
@@ -432,7 +432,7 @@ class ThickFilament:
         self.thick_faces = []
         for face_index in range(len(thin_faces)):
             self.thick_faces.append(ThickFace(self, self.axial,
-                thin_faces[face_index], face_index, start, **mh_params))
+                                              thin_faces[face_index], face_index, start, **mh_params))
         # Find the crown levels (1, 2, or 3) and orientation vectors
         crown_levels = [(n + start - 1) % 3 + 1 for n in range(n_cr)]
         crown_orientations = [0 + (level == 2) for level in crown_levels]
@@ -449,7 +449,7 @@ class ThickFilament:
                     crown_xbs.append(current_xb)
             # Create a crown with these faces and cross-bridges.
             self.crowns.append(Crown(self, index, crown_xbs,
-                crown_orientations[index]))
+                                     crown_orientations[index]))
         # Thick filament properties to remember
         self.number_of_crowns = n_cr
         self.thin_faces = thin_faces
@@ -476,8 +476,8 @@ class ThickFilament:
     def __str__(self):
         """String representation of the thick filament"""
         faces = '' .join(["Face " + str(face.index) + ": \n" +
-                    face.__str__() + '\n'
-                    for face in self.thick_faces])
+                          face.__str__() + '\n'
+                          for face in self.thick_faces])
         return faces
 
     def to_dict(self):

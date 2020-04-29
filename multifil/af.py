@@ -111,13 +111,29 @@ class BindingSite:
         return np.multiply(force_mag, self.orientation)
 
     def bind_to(self, crossbridge):
-        """Link this binding site to a cross-bridge object"""
-        self.bound_to = crossbridge
+        """Link this binding site to a given, cross-bridge object
+        return a reference to ourselves"""
+        if self.bound_to is None:  # are we available?
+            self.bound_to = crossbridge  # record the xb's phone number
+            return self  # give the xb our phone number
+        else:  # we are already taken!!!
+            import sys
+            import multiprocessing as mp
+            thread = mp.current_process().name
+            msg = "\n\n" + str(thread) + " Captain's log: ts=" + str(self.parent_thin.parent_lattice.current_timestep)
+            msg += "\nTHIS ACTIN SITE: " + str(self.address)
+            msg += "\nALREADY BOUND TO:  " + str(self.bound_to.address)
+            msg += "\nTRYING TO BIND TO: " + str(crossbridge.address)
+            msg += "\n---Denying access---"
+            sys.stdout.write(msg)
+            sys.stdout.flush()
+            return None  # don't give this xb our phone number
 
     def unbind(self):
         """Kill off any link to a crossbridge"""
-        assert(self.bound_to is not None)  # Else why try to unbind?
-        self.bind_to(None)  # Use in-house binding method
+        assert (self.bound_to is not None)  # Else why try to unbind?
+        self.bound_to = None  # remove crossbridge's contact
+        return None  # return our self - to remove us from our ex-crossbridge
 
     @property
     def tension(self):
@@ -392,6 +408,8 @@ class ThinFilament:
         tm_params = {}
         if 'tm_params' in af_params.keys():
             tm_params = af_params.pop("tm_params")
+        elif 'tm_iso' in af_params.keys():
+            tm_params = {'tm_iso': af_params.pop('tm_iso')}
         # TODO The creation of the monomer positions and angles should be refactored into a static function of similar.
         # Figure out axial positions, see Howard pg 125
         mono_per_poly = 26  # actin monomers in an actin polymer unit
