@@ -68,7 +68,7 @@ class manage:
     @staticmethod
     def _make_working_dir(name):
         """Create a temporary working directory and return the name"""
-        wd_name = '/tmp/' + name + "/"
+        wd_name = '/tmp/_multifil_tmp/' + name + "/"
         os.makedirs(wd_name, exist_ok=True)
         return wd_name
 
@@ -208,6 +208,10 @@ class manage:
             os.remove(self.metafile)
 
             os.rmdir(self.working_dir)
+            try:
+                os.rmdir('/tmp/_multifil_tmp/')
+            except OSError:
+                pass
             self._log_it("uploading finished, done with this run")
             return result, exitcode
 
@@ -230,7 +234,6 @@ class manage:
 
 # ## File management
 class sarc_file:
-
     def __init__(self, sarc, meta, working_dir):
         """Handles recording a sarcomere dict to disk at each timestep"""
         self.sarc = sarc
@@ -519,7 +522,7 @@ class manage_async:
     #       to executing two processes at once.
     #   This means that a 4 core cpu with hyper-threading can have 8 things going on at the same time.
 
-    def __init__(self, meta_files, unattended=True, use_sarc=True, force=False):
+    def __init__(self, meta_files, unattended=True, use_sarc=True, force=False, live_update=None):
         """Create a managed batch of instances of sarc objects, optionally running them
 
         Parameters
@@ -546,9 +549,18 @@ class manage_async:
         elif len(meta_files) > max_threads:
             print("More that 75% of available threads will be used for simulations, proceeding anyway.")
 
+        live_update_list = []
+        if isinstance(live_update, list):
+            live_update_list = live_update
+        elif isinstance(live_update, (int, float)):
+            live_update_list.append(live_update)
+        while len(live_update_list) < len(meta_files):
+            live_update_list.append(None)
+        print(live_update_list)
+
         self.managers = []
-        for meta_file in meta_files:
-            self.managers.append(manage(meta_file, unattended, use_sarc))
+        for meta_file, live_update in zip(meta_files, live_update_list):
+            self.managers.append(manage(meta_file, unattended, use_sarc, live_update))
 
         self.processes = []
         for manager in self.managers:
@@ -570,3 +582,5 @@ class manage_async:
 
         end = time.time()
         print(end - start, "seconds")
+
+        return None, 0

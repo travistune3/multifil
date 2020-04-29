@@ -32,7 +32,7 @@ class BindingSite:
         # Use the passed orientation index to choose the correct
         # orientation vector according to schema in ThinFilament docstring
         orientation_vectors = ((0.866, -0.5), (0, -1), (-0.866, -0.5),
-                (-0.866, 0.5), (0, 1), (0.866, 0.5))
+                               (-0.866, 0.5), (0, 1), (0.866, 0.5))
         self.orientation = orientation_vectors[orientation]
         # Start off unlinked to a tropomyosin site
         self.tm_site = None
@@ -41,10 +41,12 @@ class BindingSite:
 
     def __str__(self):
         """Return the current situation of the binding site"""
-        result = ['Binding Site #' + str(self.index) + ' Info', 14 * '=', 'State: ' + str(self.state)]
+        # noinspection PyListCreation
+        result = ['Binding Site #' + str(self.index) + ' Info']
+        result.append(14 * '=')
+        result.append('State: ' + str(self.state))
         if self.state != 0:
-            result.append('Forces: ' + str(self.axial_force())
-                          + '/' + str(self.radial_force()))
+            result.append('Forces: ' + str(self.axial_force()) + '/' + str(self.radial_force()))
         return '\n'.join(result)
 
     def to_dict(self):
@@ -110,18 +112,12 @@ class BindingSite:
 
     def bind_to(self, crossbridge):
         """Link this binding site to a cross-bridge object"""
-        # print("+", end="")
         self.bound_to = crossbridge
 
     def unbind(self):
         """Kill off any link to a crossbridge"""
-        # print("x", end="")
-        assert(self.bound_to is not None)   # Else why try to unbind?
-        # if False: TODO figure out what condition I had written here...
-        #    self.tm_site.update_nearby()
-        if True:    # else:
-            self.bind_to(None)
-        self.bound_to = None
+        assert(self.bound_to is not None)  # Else why try to unbind?
+        self.bind_to(None)  # Use in-house binding method
 
     @property
     def tension(self):
@@ -217,8 +213,6 @@ class ThinFace:
             thinface_d['titin_fil'])
         # Sub-structure keys
         self.binding_sites = [self.parent_thin.resolve_address(bsa) for bsa in thinface_d['binding_sites']]
-
-
 
     def nearest(self, axial_location):
         """Where is the nearest binding site?
@@ -412,21 +406,22 @@ class ThinFilament:
             self.z_line - mono_per_poly*poly_per_fil*rise) + m*rise
             for m in range(mono_per_poly*poly_per_fil)]
         monomer_angles = [(((m+start+1) % mono_per_poly) * pitch) % rev
-                for m in range(mono_per_poly * poly_per_fil)]
+                          for m in range(mono_per_poly * poly_per_fil)]
         # Convert face orientations to angles, then to angles from 0 to 2pi
         orientation_vectors = ((0.866, -0.5), (0, -1.0), (-0.866, -0.5),
-                (-0.866, 0.5), (0, 1.0), (0.866, 0.5))
+                               (-0.866, 0.5), (0, 1.0), (0.866, 0.5))
         face_vectors = [orientation_vectors[o] for o in face_orientations]
         face_angles = [np.arctan2(v[1], v[0]) for v in face_vectors]
         face_angles = [v + rev if (v < 0) else v for v in face_angles]
         # Find which monomers are opposite each face
         wiggle = rev/24     # count faces within 15 degrees of opposite
         mono_in_each_face = [np.nonzero(np.abs(np.subtract(monomer_angles,
-            face_angles[i])) < wiggle)[0] for i in range(len(face_angles))]
+                                                           face_angles[i])) < wiggle)[0]
+                             for i in range(len(face_angles))]
         # This is [(index_to_face_1, ...), (index_to_face_2, ...), ...]
         # Translate monomer position to binding site position
         axial_by_face = [[monomer_positions[mono_ind] for mono_ind in face]
-                for face in mono_in_each_face]
+                         for face in mono_in_each_face]
         axial_flat = np.sort(np.hstack(axial_by_face))
         # Tie the nodes on each face into the flat axial locations
         node_index_by_face = np.array([
@@ -448,8 +443,7 @@ class ThinFilament:
         orientation = None
         face_binding_sites = None
         for face_index in range(len(node_index_by_face)):
-            face_binding_sites = ([self.binding_sites[i] for i in
-                node_index_by_face[face_index]])
+            face_binding_sites = ([self.binding_sites[i] for i in node_index_by_face[face_index]])
             orientation = face_orientations[face_index]
             self.thin_faces.append(
                 ThinFace(self, orientation, face_index, face_binding_sites))
@@ -511,7 +505,7 @@ class ThinFilament:
         thin_d['axial'] = list(thin_d['axial'])
         thin_d['rests'] = list(thin_d['rests'])
         thin_d['binding_sites'] = [bs.to_dict() for bs in
-                                  thin_d['binding_sites']]
+                                   thin_d['binding_sites']]
         thin_d['tm'] = [tropomyosin.to_dict() for tropomyosin in thin_d['tm']]
         return thin_d
 
@@ -596,7 +590,7 @@ class ThinFilament:
             axial_forces = [site.axial_force() for site in self.binding_sites]
         else:
             axial_forces = [site.axial_force(loc) for
-                    site, loc in zip(self.binding_sites, axial_locations)]
+                            site, loc in zip(self.binding_sites, axial_locations)]
         return axial_forces
 
     def axial_force(self, axial_locations=None):
@@ -620,23 +614,6 @@ class ThinFilament:
         return np.add(thin, binding_sites)
 
     def transition(self):
-        """Give self, (well, TMs really) a chance to transition states"""
-        # bound = 0
-        # total = 0
-        # for tropomyosin in self.tm:
-        #     for tm_site in tropomyosin.sites:
-        #         if tm_site.state != 0:
-        #             bound += 1
-        #         total += 1
-        # # volume = self.parent_lattice.volume
-        # # concentrations = {'free_tm':(total-bound) / volume, 'bound_tm': bound/volume}
-        # result = [tropomyosin.transition() for tropomyosin in self.tm]
-        # active = 0
-        # total = 0
-        # for i in range(0, len(result)):
-        #     active += result[i][0]
-        #     total += result[i][1]
-        # return active, total
         """Give self, (well, TMs really) a chance to transition states"""
         return [tropomyosin.transition() for tropomyosin in self.tm]
 

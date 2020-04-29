@@ -67,24 +67,28 @@ class TmSite:
         self.binding_site.tm_site = self
         self.state = 0
         # ## Kinetics from Tanner 2007, 2012, and thesis
-        K1 = 1e5  # per mole Ca
-        K2 = 10  # unit-less
-        K3 = 10  # unit-less
-        K4 = 1e6  # moles Ca
-        k_12 = 5e5  # per mole Ca per sec
-        k_23 = 10  # per sec
-        k_34 = 10  # per sec
-        k_41 = 5  # per sec
+        # Equilibrium constants
+        # todo cite
+        K1 = 2.6e4  # per mole Ca
+        K2 = 1.3e2  # unit-less
+        K3 = 9.1e-1  # unit-less
+        K4 = None  # moles Ca
+        # Forward Rate constants - !!! r14 is overridden to 0 ms-1 in _r14()
+        # todo cite
+        k_12 = 1e8  # per mole Ca per sec
+        k_23 = 1.4e4  # per sec
+        k_34 = 2e3  # per sec
+        k_41 = 110  # per sec
         s_per_ms = 1e-3  # seconds per millisecond
         k_12 *= s_per_ms  # convert rates from
         k_23 *= s_per_ms  # occurrences per second
         k_34 *= s_per_ms  # to
         k_41 *= s_per_ms  # occurrences per ms
-        coop = 100  # cooperative multiplier
+        coop = 1  # cooperative multiplier - default 1 (no cooperativity)
         self._K1, self._K2, self._K3, self._K4 = K1, K2, K3, K4
         self._k_12, self._k_23, self._k_34, self._k_41 = k_12, k_23, k_34, k_41
         self._coop = coop
-        self._concentrations = None
+        # todo TBD self._concentrations = None  # [c_1, c_2, c_3]
 
         """Handle tm_params"""
         # ## Handle tm_isomer calculations
@@ -236,9 +240,9 @@ class TmSite:
         State 1 - "bound"   - Calcium, TnC  and TnI haven't interacted
         State 2 - "closed"  - Calcium, TnC+TnI, actin site covered
         State 3 - "open"    - Calcium, TnC+TnI, actin site available
-            State 3-0 -> myosin unbound
-            State 3-1 -> myosin weakly bound
-            State 3-2 -> myosin strongly bound
+            State 3-M0 -> myosin unbound
+            State 3-M1 -> myosin weakly bound
+            State 3-M2 -> myosin strongly bound
         """
         return self._state
 
@@ -261,6 +265,7 @@ class TmSite:
 
     def _r12(self):
         """Rate of Ca and TnC association, conditional on [Ca]"""
+        # TODO concentration logic - reversible reaction rate tn concentration in HS
         # forward = self._k_12 * self.ca * self._concentrations['free_tm']
         # coop = self._coop if self.subject_to_cooperativity else 1
         # forward *= coop
@@ -327,12 +332,12 @@ class TmSite:
         """
         # k_14 = self._k_41 / self._K4
         # reverse = k_14  * self.ca * self.ca * self._concentrations['free_tm']
+        if self._K4 is not None:
+            forward = self._k_41
+            reverse = forward / self._K4
+            reverse *= self.ca
 
-        forward = self._k_41
-        reverse = forward / self._K4
-        reverse *= self.ca
-
-        return reverse
+        return 0  # TODO figure this out
 
     def _prob(self, rate):
         """ Convert a rate to a probability, based on the current timestep
@@ -364,7 +369,8 @@ class TmSite:
 
     def transition(self):
         """Transition from one state to the next, or back, or don't """
-        self._concentrations = self.parent_tm.parent_thin.parent_lattice.concentrations
+        # TODO deal with this later
+        # self._concentrations = self.parent_tm.parent_thin.parent_lattice.concentrations
         rand = np.random.random()
 
         f, b = 0, 0     # avoid any chance of an UnboundLocalError

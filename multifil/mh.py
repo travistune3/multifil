@@ -464,7 +464,7 @@ class Head:
             rate: a per ms rate to convert to probability
         Returns:
             probability: the probability the event occurs during a timestep
-                of length determined by self.timestep
+                of length determined by self.timestep_len
         """
         return 1 - m.exp(-rate * self.timestep_len)
 
@@ -676,7 +676,7 @@ class Crossbridge(Head):
             bound_to: None or the address of the bound binding site
         """
         xbd = self.__dict__.copy()
-        xbd.pop('_timestep')
+        # xbd.pop('_timestep')
         xbd.pop('index')
         xbd.pop('c')
         xbd.pop('g')
@@ -749,10 +749,7 @@ class Crossbridge(Head):
             trans = super(Crossbridge, self).transition(distance_to_site,
                                                         actin_state)
             # Process changes to the bound state
-            if trans == '21':
-                self.bound_to.bind_to(None)
-                self.bound_to = None
-            elif trans == '31':
+            if trans in {'21', '31'}:
                 self.bound_to.unbind()
                 self.bound_to = None
             else:

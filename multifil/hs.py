@@ -125,6 +125,15 @@ class hs:
         self.version = 1.4  # Includes support for tropomyosin AND titin
 
         """ ## Handle Kwargs ## """  # =================================================================================
+        # TODO add specifications
+        """
+        # Syntax for profiles:
+        #
+
+        # Syntax for multiple profiles
+        # module _ iso (isomer)
+        """
+
         # Titin constants
         # Isomer-available
         valid_ti_params = ti.Titin.VALID_PARAMS
@@ -241,10 +250,9 @@ class hs:
         thin_orientations = ([4, 0, 2], [3, 5, 1], [4, 0, 2], [3, 5, 1],
                              [3, 5, 1], [4, 0, 2], [3, 5, 1], [4, 0, 2])
         np.random.seed(None)
+        # This gives 25 random starts in orientation to the thin
         if starts is None:
-            thin_starts = []
-            for i in range(len(thin_orientations)):
-                thin_starts.append(np.random.randint(25))
+            thin_starts = [np.random.randint(25) for _ in thin_orientations]
         else:
             thin_starts = starts[0]
         self._thin_starts = thin_starts
@@ -282,9 +290,7 @@ class hs:
         # |         a4         |      m2         m2      m1  |
         # ----------------------------------------------------
         if starts is None:
-            thick_starts = []
-            for i in range(4):
-                thick_starts.append(np.random.randint(1, 4))
+            thick_starts = [np.random.randint(1, 4) for _ in range(4)]
         else:
             thick_starts = starts[1]
         self._thick_starts = thick_starts
