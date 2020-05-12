@@ -39,8 +39,9 @@ Created by Dave Williams on 2017-03-08
 
 import os
 import uuid
-import ujson as json
 import numpy as np
+
+from multifil.utilities import json
 
 
 # ## Define traces to be used in runs
@@ -214,9 +215,22 @@ def emit(path_local, path_s3, time, poisson=0.0, ls=None, z_line=None, actin_per
     # ## Include kwargs
     for k in kwargs:
         run_d[k] = kwargs[k]
-    # ## Write out the run description
+    # ## Ensure vanilla JSON compatibility - vanilla json is not able to read/write numpy arrays
+    for key, value in run_d.items():
+        if isinstance(value, np.ndarray):
+            run_d[key] = list(value)
+    # ## Write out the run description - warn if there is still an issue with typing
     if write is True:
-        output_filename = os.path.join(path_local, name + '.meta.json')
-        with open(output_filename, 'w') as metafile:
-            json.dump(run_d, metafile, indent=4)
+        try:
+            output_filename = os.path.join(path_local, name + '.meta.json')
+            with open(output_filename, 'w') as metafile:
+                json.dump(run_d, metafile, indent=4)
+        except TypeError as e:
+            for key, value in run_d.items():
+                print(key, type(value))
+            print()
+            print("Probably, one of the above types is not json compatible,"
+                  "\nsee bottom of following error message for more info")
+            print()
+            raise e
     return run_d

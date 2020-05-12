@@ -21,19 +21,19 @@ import os
 import shutil
 import subprocess
 import time
-import ujson as json
 import multiprocessing as mp
 import boto
 import numpy as np
 
-from .. import hs
+from multifil import hs
+from multifil.utilities import use_aws, json
 
 
 # ## Manage a local run
 class manage:
     """Run, now with extra object flavor"""
 
-    def __init__(self, metafile, unattended=True):
+    def __init__(self, metafile, unattended=True, use_sarc=True, live_update=None):
         """Create a managed instance of the sarc, optionally running it
 
         Parameters
@@ -46,17 +46,27 @@ class manage:
             Whether to complete the run without further intervention or treat
             as an interactive session.
         """
-        self.s3 = s3()
-        self.uuid = metafile.split('/')[-1].split('.')[0]
+        if use_aws:
+            self.s3 = s3()
+        else:
+            self.s3 = None
+        self.uuid = os.path.basename(metafile).split('.')[0]
         self.working_dir = self._make_working_dir(self.uuid)
         self.metafile = self._parse_metafile_location(metafile)
         self.meta = self.unpack_meta(self.metafile)
         self.sarc = self.unpack_meta_to_sarc(self.meta)
+        self.use_sarc = use_sarc
+        self.live_update = live_update
+        self.sarcfile = None
+        self.datafile = None
+        self.zip_filename = None
+        self.working_filename = None
         if unattended:
             try:
                 self.run_and_save()
-            except:
+            except Exception as e:
                 mp.current_process().terminate()
+                print(e)
 
     @staticmethod
     def _make_working_dir(name):
@@ -132,35 +142,68 @@ class manage:
                 pass
         # Save to passes local location
         if final_loc is not None:
-            local_loc = os.path.abspath(os.path.expanduser(location)) \
+            local_loc = os.path.abspath(os.path.expanduser(final_loc)) \
                         + file_name
             shutil.copyfile(temp_loc, local_loc)
 
     def run_and_save(self):
         """Complete a run according to the loaded meta configuration and save
         results to meta-specified s3 and local locations"""
-        # Initialize data and sarc
-        self.sarcfile = sarc_file(self.sarc, self.meta, self.working_dir)
-        self.datafile = data_file(self.sarc, self.meta, self.working_dir)
-        # Run away
-        np.random.seed()
-        tic = time.time()
-        for timestep in range(self.meta['timestep_number']):
-            self.sarc.timestep(timestep)
-            self.datafile.append()
-            self.sarcfile.append()
-            # Update on how it is going
-            self._run_status(timestep, tic, 100)
-        # Finalize and save files to final locations
-        self._log_it("model finished, uploading")
-        self._copy_file_to_final_location(self.metafile)
-        data_final_name = self.datafile.finalize()
-        self._copy_file_to_final_location(data_final_name)
-        self.datafile.delete()  # clean up temp files
-        sarc_final_name = self.sarcfile.finalize()
-        self._copy_file_to_final_location(sarc_final_name)
-        self.sarcfile.delete()  # clean up temp files
-        self._log_it("uploading finished, done with this run")
+        exitcode = None
+        result = None
+
+        try:
+            # Initialize data and sarc
+            if self.use_sarc:
+                self.sarcfile = sarc_file(self.sarc, self.meta, self.working_dir)
+            self.datafile = data_file(self.sarc, self.meta, self.working_dir)
+            # Run away
+            # noinspection PyArgumentList
+            np.random.seed()
+            tic = time.time()
+
+            for timestep in range(self.meta['timestep_number']):
+                self.sarc.timestep(timestep)
+                self.datafile.append()
+                if self.live_update is not None and timestep % self.live_update == 0:
+                    self.datafile.finalize()
+                if self.use_sarc:
+                    self.sarcfile.append()
+                # Update on how it is going
+                self._run_status(timestep, tic, 100)
+
+            # Finalize and save files to final locations
+            self._log_it("model finished, uploading")
+            exitcode = 0
+        except KeyboardInterrupt:
+            exitcode = 130
+        except Exception as e:
+            exitcode = 1
+            import traceback
+            print("/n")
+            print(e)
+            traceback.print_exc()
+        finally:  # <- executed normally but also in the event of failure
+            # In the event of general failure or user interrupt,
+            # we need to finalize what we have.
+            # READ: orphaned files in /tmp/ are disallowed now.
+            if self.datafile is not None:
+                result = self.datafile.data_dict.copy()
+                data_final_name = self.datafile.finalize()
+                self._copy_file_to_final_location(data_final_name)
+                self.datafile.delete()  # clean up temp files
+
+            if self.use_sarc and self.sarcfile is not None:
+                sarc_final_name = self.sarcfile.finalize()
+                self._copy_file_to_final_location(sarc_final_name)
+                self.sarcfile.delete()  # clean up temp files
+
+            self._copy_file_to_final_location(self.metafile)
+            os.remove(self.metafile)
+
+            os.rmdir(self.working_dir)
+            self._log_it("uploading finished, done with this run")
+            return result, exitcode
 
     def _run_status(self, timestep, start, every):
         """Report the run status"""
@@ -189,9 +232,16 @@ class sarc_file:
         self.working_directory = working_dir
         sarc_name = '/' + meta['name'] + '.sarc.json'
         self.working_filename = self.working_directory + sarc_name
-        self.working_file = open(self.working_filename, 'a')
-        self.next_write = '[\n'
-        self.append(True)
+
+        try:
+            self.working_file = open(self.working_filename, 'a')
+            self.next_write = '[\n'
+            self.append(True)
+        except Exception as e:
+            print(e)
+
+        self.zip_filename = None
+        self.print_zip = False
 
     def append(self, first=False):
         """Add the current timestep sarcomere to the sarc file"""
@@ -210,6 +260,8 @@ class sarc_file:
         cp = subprocess.run(['tar', 'czf', self.zip_filename,
                              '-C', self.working_directory,
                              self.working_filename])
+        if self.print_zip:
+            print(cp)
         os.remove(self.working_filename)
         return self.zip_filename
 
@@ -224,6 +276,7 @@ class data_file:
         self.sarc = sarc
         self.meta = meta
         self.working_directory = working_dir
+        self.working_filename = None
         self.data_dict = {
             'name': self.meta['name'],
             'timestep_length': self.sarc.timestep_len,
@@ -410,3 +463,79 @@ class s3:
             print("Size mismatch, uploading again for %s: " % local)
             key.set_contents_from_filename(local)
         return
+
+    # ## Manage multiple local runs
+    class manage_async:
+        """This class allows the user to run concurrent local simulations using a multi-core cpu"""
+
+        #   Modern computers typically have at least 2 physical cores in their cpu
+        #       able to perform processes truly asynchronously, given that they don't need to exchange
+        #       information to complete these processes. If they require info exchange, that is also possible
+        #       to facilitate, but may end up requiring some wait time to ensure the processes complete correctly.
+        #   In addition to physical cores, modern cpus have a hardware-based trick called hyper-threading
+        #       that allows them to switch between two things quickly enough that they get very close
+        #       to executing two processes at once.
+        #   This means that a 4 core cpu with hyper-threading can have 8 things going on at the same time.
+
+        def __init__(self, meta_files, unattended=True, use_sarc=True, force=False, live_update=None):
+            """Create a managed batch of instances of sarc objects, optionally running them
+
+            Parameters
+            ----------
+            meta_files: list of strings
+                A list of the locations of the metafile describing the run to be worked
+                through. Can be local or on S3. Assumed to be on S3 if the local
+                file does not exist.
+            unattended: boolean
+                Whether to complete the run without further intervention or treat
+                as an interactive session.
+            """
+            max_threads = max(2, int(0.75 * mp.cpu_count()))
+            if len(meta_files) >= mp.cpu_count():
+                print("More instances than threads,", end=" ")
+                if not force:
+                    print("these files will not be run:")
+                    for meta_file in meta_files[max_threads:]:
+                        print(meta_file)
+                    meta_files = meta_files[0:max_threads]
+                else:
+                    print("forcing anyway."
+                          "\nBehavior will be dependent on python's built in class multiprocessing.")
+            elif len(meta_files) > max_threads:
+                print("More that 75% of available threads will be used for simulations, proceeding anyway.")
+
+            live_update_list = []
+            if isinstance(live_update, list):
+                live_update_list = live_update
+            elif isinstance(live_update, (int, float)):
+                live_update_list.append(live_update)
+            while len(live_update_list) < len(meta_files):
+                live_update_list.append(None)
+            print(live_update_list)
+
+            self.managers = []
+            for meta_file, live_update in zip(meta_files, live_update_list):
+                self.managers.append(manage(meta_file, unattended, use_sarc, live_update))
+
+            self.processes = []
+            for manager in self.managers:
+                self.processes.append(mp.Process(target=manager.run_and_save, args=()))
+
+            if unattended:
+                try:
+                    self.run_and_save()
+                except Exception as e:
+                    mp.current_process().terminate()
+                    print(e)
+
+        def run_and_save(self):
+            start = time.time()
+            for process in self.processes:
+                process.start()
+            for process in self.processes:
+                process.join()
+
+            end = time.time()
+            print(end - start, "seconds")
+
+            return None, 0

@@ -191,9 +191,9 @@ class ThickFace:
         thick = '|' + len(self.xb) * '='
         xb_string = [' ', '|', '\\']
         thick_band = ' ' + ''.join([xb_string[xb.numeric_state]
-                                  for xb in self.xb])
+                                    for xb in self.xb])
         thin_band = 12 * ' ' + ''.join([xb_string[act.state]
-                                      for act in self.thin_face.binding_sites])
+                                        for act in self.thin_face.binding_sites])
         thin = 12 * ' ' + len(self.thin_face.binding_sites) * '-' + '|'
         return thick + '\n' + thick_band + '\n' + thin_band + '\n' + thin + '\n'
 
@@ -530,7 +530,7 @@ class ThickFilament:
         """Return the total cross-bridge force on each crown
         This does not take into account the force from thick filament springs
         """
-        if axial_locations == None:
+        if axial_locations is None:
             axial_force = [cr.axial_force() for cr in self.crowns]
         else:
             axial_force = [cr.axial_force(loc) for
@@ -635,7 +635,7 @@ class ThickFilament:
             forces: axial force of the thick filament at each crown
         """
         # Use the thick filament's stored axial locations if none are passed
-        if axial_locations == None:
+        if axial_locations is None:
             axial_locations = np.hstack([0, self.axial])
         else:
             axial_locations = np.hstack([0, axial_locations])

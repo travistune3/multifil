@@ -40,6 +40,7 @@ class BindingSite:
 
     def __str__(self):
         """Return the current situation of the binding site"""
+        # noinspection PyListCreation
         result = ['Binding Site #' + str(self.index) + ' Info']
         result.append(14 * '=')
         result.append('State: ' + str(self.state))
@@ -108,13 +109,29 @@ class BindingSite:
         return np.multiply(force_mag, self.orientation)
 
     def bind_to(self, crossbridge):
-        """Link this binding site to a cross-bridge object"""
-        self.bound_to = crossbridge
+        """Link this binding site to a given, cross-bridge object
+        return a reference to ourselves"""
+        if self.bound_to is None:  # are we available?
+            self.bound_to = crossbridge  # record the xb's phone number
+            return self  # give the xb our phone number
+        else:  # we are already taken!!!
+            # import sys
+            # import multiprocessing as mp
+            # thread = mp.current_process().name
+            # msg = "\n\n" + str(thread) + " Captain's log: ts=" + str(self.parent_thin.parent_lattice.current_timestep)
+            # msg += "\nTHIS ACTIN SITE: " + str(self.address)
+            # msg += "\nALREADY BOUND TO:  " + str(self.bound_to.address)
+            # msg += "\nTRYING TO BIND TO: " + str(crossbridge.address)
+            # msg += "\n---Denying access---"
+            # sys.stdout.write(msg)
+            # sys.stdout.flush()
+            return None  # don't give this xb our phone number
 
     def unbind(self):
         """Kill off any link to a crossbridge"""
         assert (self.bound_to is not None)  # Else why try to unbind?
-        self.bound_to = None
+        self.bound_to = None  # remove crossbridge's contact
+        return None  # return our self - to remove us from our ex-crossbridge
 
     @property
     def state(self):
@@ -391,6 +408,9 @@ class ThinFilament:
         # Tie the nodes on each face into the flat axial locations
         node_index_by_face = np.array([[np.nonzero(axial_flat == loc)[0][0]
                                         for loc in f] for f in axial_by_face])
+        # V AMA 3-4-2020 V
+        # TODO figure out if this argument to np.tile is correct. Trust in CDW
+        # noinspection PyTypeChecker
         face_index_by_node = np.tile(None, len(axial_flat))
         for face_ind in range(len(node_index_by_face)):
             for node_ind in node_index_by_face[face_ind]:
@@ -401,6 +421,8 @@ class ThinFilament:
             orientation = face_orientations[face_index_by_node[index]]
             self.binding_sites.append(BindingSite(self, index, orientation))
         self.thin_faces = []
+        orientation = None
+        face_binding_sites = None
         for face_index in range(len(node_index_by_face)):
             face_binding_sites = ([self.binding_sites[i] for i in
                                    node_index_by_face[face_index]])
@@ -438,7 +460,7 @@ class ThinFilament:
         thin_d['axial'] = list(thin_d['axial'])
         thin_d['rests'] = list(thin_d['rests'])
         thin_d['binding_sites'] = [bs.to_dict() for bs in
-                                  thin_d['binding_sites']]
+                                   thin_d['binding_sites']]
         return thin_d
 
     def from_dict(self, td):
@@ -511,7 +533,7 @@ class ThinFilament:
         Returns:
             axial_forces: a list of the XB axial force at each node 
         """
-        if axial_locations == None:
+        if axial_locations is None:
             axial_forces = [site.axial_force() for site in self.binding_sites]
         else:
             axial_forces = [site.axial_force(loc) for
@@ -592,7 +614,7 @@ class ThinFilament:
             net_force_on_each_binding_site: per-site force
         """
         # Use the thin filament's stored axial locations if none are passed
-        if axial_locations == None:
+        if axial_locations is None:
             axial_locations = np.hstack([self.axial, self.z_line])
         else:
             axial_locations = np.hstack([axial_locations, self.z_line])

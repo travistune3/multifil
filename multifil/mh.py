@@ -5,17 +5,20 @@ mh.py - A single myosin head
 
 Created by Dave Williams on 2010-01-04.
 """
+from numpy import pi, sqrt, log, radians
 
 import math as m
 import warnings
-from numpy import pi, sqrt, log, radians
 import numpy.random as random
-random.seed()   # Ensure proper seeding
 
 
 class Spring:
     """A generic spring, from which we make the myosin heads"""
+
     def __init__(self, config):
+        # noinspection PyArgumentList
+        random.seed()  # Ensure proper seeding
+
         # ## Passed variables
         self.r_w = config['rest_weak']
         self.r_s = config['rest_strong']
@@ -23,10 +26,10 @@ class Spring:
         self.k_s = config['konstant_strong']
         # ## Diffusion governors
         # k_T = Boltzmann constant * temperature = (1.381E-23 J/K * 288 K)
-        k_t = 1.381*10**-23 * 288 * 10**21  # 10**21 converts J to pN*nM
+        k_t = 1.381 * 10 ** -23 * 288 * 10 ** 21  # 10**21 converts J to pN*nM
         # Normalize: a factor used to normalize the PDF of the segment values
-        self.normalize = sqrt(2*pi*k_t/self.k_w)
-        self.stand_dev = sqrt(k_t/self.k_w)     # of segment values
+        self.normalize = sqrt(2 * pi * k_t / self.k_w)
+        self.stand_dev = sqrt(k_t / self.k_w)  # of segment values
 
     def to_dict(self):
         """Create a JSON compatible representation of the spring """
@@ -100,7 +103,9 @@ class Spring:
         return random.normal(self.r_w, self.stand_dev)
 
 
-"""This class is no longer used. Keeping for line count - AMA"""    # class SingleSpringHead:
+"""This class is no longer used. Keeping for line count - AMA"""  # class SingleSpringHead:
+
+
 #     """A single-spring myosin head, as in days of yore"""
 #     def __init__(self):
 #         """Create the spring that makes up the head and set energy values"""
@@ -315,6 +320,7 @@ class Spring:
 
 class Head:
     """Head implements a single myosin head"""
+
     def __init__(self):
         """Create the springs that make up the head and set energy values
         Values are chosen for consistency with single spring rest lengths
@@ -322,29 +328,30 @@ class Head:
         code. All numerical values referenced are discussed in single
         crossbridge PLOS paper.
         """
+        # noinspection PyArgumentList
+        random.seed()  # Ensure proper seeding
+
         # Remember thine kinetic state
         self.state = "free"
         # Create the springs which make up the head
-        self.c = Spring({   # the converter domain
+        self.c = Spring({  # the converter domain
             'rest_weak': radians(47.16),
             'rest_strong': radians(73.20),
             'konstant_weak': 40,
             'konstant_strong': 40})
-        self.g = Spring({   # the globular domain
+        self.g = Spring({  # the globular domain
             'rest_weak': 19.93,
             'rest_strong': 16.47,
             'konstant_weak': 2,
             'konstant_strong': 2})
         # Free energy calculation helpers
         g_atp = 13  # In units of RT
-        atp = 5 * 10**-3
-        adp = 30 * 10**-6
-        phos = 3 * 10**-3
+        atp = 5 * 10 ** -3
+        adp = 30 * 10 ** -6
+        phos = 3 * 10 ** -3
         deltaG = abs(-g_atp - log(atp / (adp * phos)))
         self.alphaDG = 0.28 * -deltaG
         self.etaDG = 0.68 * -deltaG
-        # The time-step, master of all time
-        self._timestep = 1  # ms
 
     def transition(self, bs, ap):
         """Transition to a new state (or not)
@@ -359,7 +366,7 @@ class Head:
         check = random.rand()
         # ## Check for transitions depending on the current state
         if self.state == "free":
-            if self._prob(self._bind(bs))*ap > check:
+            if self._prob(self._bind(bs)) * ap > check:
                 self.state = "loose"
                 return '12'
         elif self.state == "loose":
@@ -396,7 +403,7 @@ class Head:
         g_k = self.g.constant(self.state)
         # ## Find and return force
         f_x = (g_k * (g_len - g_s) * m.cos(c_ang) +
-               1/g_len * c_k * (c_ang - c_s) * m.sin(c_ang))
+               1 / g_len * c_k * (c_ang - c_s) * m.sin(c_ang))
         return f_x
 
     def radial_force(self, tip_location):
@@ -416,7 +423,7 @@ class Head:
         g_k = self.g.constant(self.state)
         # ## Find and return force
         f_y = (g_k * (g_len - g_s) * m.sin(c_ang) +
-               1/g_len * c_k * (c_ang - c_s) * m.cos(c_ang))
+               1 / g_len * c_k * (c_ang - c_s) * m.cos(c_ang))
         return f_y
 
     def energy(self, tip_location, state=None):
@@ -427,7 +434,7 @@ class Head:
             state: kinetic state of the cross-bridge, ['free'|'loose'|'tight']
         Returns:
             xb_energy: the energy stored in the cross-bridge"""
-        if state == None:
+        if state is None:
             state = self.state
         (ang, dist) = self._seg_values(tip_location)
         xb_energy = self.c.energy(ang, state) + self.g.energy(dist, state)
@@ -440,13 +447,10 @@ class Head:
         return lookup_state[self.state]
 
     @property
-    def timestep(self):
-        return self._timestep
-
-    @timestep.setter
-    def timestep(self, timestep):
-        """Set the length of time step used to calculate transitions"""
-        self._timestep = timestep
+    def timestep_len(self):
+        raise AttributeError("method timestep_len in class Head must be overridden by Child class.")
+        # Prevent inheritance issues where Head objects cycle at ts_l = 1 ms if not told otherwise.
+        # AMA 25MAR2020
 
     def _prob(self, rate):
         """Convert a rate to a probability, based on the current timestep
@@ -460,7 +464,7 @@ class Head:
             probability: the probability the event occurs during a timestep
                 of length determined by self.timestep
         """
-        return 1 - m.exp(-rate*self.timestep)
+        return 1 - m.exp(-rate * self.timestep_len)
 
     def _bind(self, bs):
         """Bind (or don't) based on the distance from the Head tip to a Actin
@@ -472,6 +476,7 @@ class Head:
         """
         # ## Flag indicates successful diffusion
         bop_right = False
+        tip = None
         while bop_right is False:
             # ## Bop the springs to get new values
             c_ang = self.c.bop()
@@ -481,11 +486,11 @@ class Head:
             # ## Only a bop that lands short of the thin fil is valid
             bop_right = bs[1] >= tip[1]
         # ## Find the distance to the binding site
-        distance = m.hypot(bs[0]-tip[0], bs[1]-tip[1])
+        distance = m.hypot(bs[0] - tip[0], bs[1] - tip[1])
 
         # ## The binding rate is dependent on the exp of the dist
         # Rate = \tau * \exp^{-dist^2}
-        rate = 72 * m.exp(-distance**2)
+        rate = 72 * m.exp(-distance ** 2)
         # ## Return the rate
         return rate
 
@@ -527,10 +532,10 @@ class Head:
         loose_energy = self.energy(bs, "loose")
         tight_energy = self.energy(bs, "tight")
         # ## Powerstroke rate, per ms
-        rate = (0.6 *       # reduce overall rate
-                (1 +        # shift rate up to avoid negative rate
-                m.tanh(6 +  # move center of transition to right
-                       0.2 * (loose_energy - tight_energy))))
+        rate = (0.6 *           # reduce overall rate
+                (1 +            # shift rate up to avoid negative rate
+                 m.tanh(6 +     # move center of transition to right
+                        0.2 * (loose_energy - tight_energy))))
         return float(rate)
 
     def _r32(self, bs):
@@ -561,7 +566,7 @@ class Head:
         # ## Based on the energy in the tight state
         # loose_energy = self.energy(bs, "loose")
         tight_energy = self.energy(bs, "tight")
-        rate = m.sqrt(0.01*tight_energy) + 0.02
+        rate = m.sqrt(0.01 * tight_energy) + 0.02
         return float(rate)
 
     def _free_energy(self, tip_location, state):
@@ -596,6 +601,7 @@ class Head:
 
 class Crossbridge(Head):
     """A cross-bridge, including status of links to actin sites"""
+
     def __init__(self, index, parent_face, thin_face):
         """Set up the cross-bridge
 
@@ -606,6 +612,10 @@ class Crossbridge(Head):
         """
         # Do that super() voodoo that instantiates the parent Head
         super(Crossbridge, self).__init__()
+
+        # noinspection PyArgumentList
+        random.seed()  # Ensure proper seeding
+
         # What is your name, where do you sit on the parent face?
         self.index = index
         # What log are you a bump upon?
@@ -616,7 +626,7 @@ class Crossbridge(Head):
         self.address = ('xb', self.parent_face.parent_filament.index,
                         self.parent_face.index, self.index)
         # Remember if thou art bound unto an actin
-        self.bound_to = None    # None if unbound, BindingSite object otherwise
+        self.bound_to = None  # None if unbound, BindingSite object otherwise
 
     def __str__(self):
         """String representation of the cross-bridge"""
@@ -637,7 +647,7 @@ class Crossbridge(Head):
             bound_to: None or the address of the bound binding site
         """
         xbd = self.__dict__.copy()
-        xbd.pop('_timestep')
+        # xbd.pop('_timestep')
         xbd.pop('index')
         xbd.pop('c')
         xbd.pop('g')
@@ -659,20 +669,20 @@ class Crossbridge(Head):
         self.etaDG = xbd['etaDG']
         self.alphaDG = xbd['alphaDG']
         # Sub-structure and remote keys
-        self.thin_face = self.parent_face.parent_filament.parent_lattice.\
+        self.thin_face = self.parent_face.parent_filament.parent_lattice. \
             resolve_address(xbd['thin_face'])
         if xbd['bound_to'] is None:
             self.bound_to = None
         else:
-            self.bound_to = self.parent_face.parent_filament.parent_lattice.\
+            self.bound_to = self.parent_face.parent_filament.parent_lattice. \
                 resolve_address(xbd['bound_to'])
 
     @property
-    def timestep(self):
+    def timestep_len(self):
         """Timestep size is stored at the half-sarcomere level"""
         return self.parent_face.parent_filament.parent_lattice.timestep_len
 
-    def transition(self):
+    def transition(self, **kwargs):
         """Gather the needed information and try a transition
 
         Parameters:
@@ -699,8 +709,14 @@ class Crossbridge(Head):
                                                         actin_state)
             # Process changes to bound state
             if trans == '12':
-                self.bound_to = actin_site
-                actin_site.bind_to(self)
+                self.bound_to = actin_site.bind_to(self)
+                if self.bound_to is None:
+                    self.state = 'free'  # failed to bind TODO fix this
+                    # import sys
+                    # msg = "\n---successfully denied---\n"
+                    # sys.stdout.write(msg)
+                    # sys.stdout.flush()
+                # assert(self.bound_to.bound_to is not None)
             else:
                 assert (trans is None), 'Bound state mismatch'
         else:
@@ -711,11 +727,11 @@ class Crossbridge(Head):
             trans = super(Crossbridge, self).transition(distance_to_site,
                                                         actin_state)
             # Process changes to the bound state
-            if trans in set(('21', '31')):
-                self.bound_to.bind_to(None)
-                self.bound_to = None
+            if trans in {'21', '31'}:
+                self.bound_to = self.bound_to.unbind()
+                assert (self.bound_to is None)
             else:
-                assert (trans in set(('23', '32', None))), 'State mismatch'
+                assert (trans in {'23', '32', None}), 'State mismatch'
         return trans
 
     def axial_force(self, base_axial_loc=None, tip_axial_loc=None):
@@ -735,7 +751,7 @@ class Crossbridge(Head):
         # Allow the myosin head to take it from here
         return super(Crossbridge, self).axial_force(distance)
 
-    def radial_force(self):
+    def radial_force(self, **kwargs):
         """Gather needed information and return the radial force
 
         Parameters:
