@@ -69,13 +69,13 @@ class TmSite:
         # ## Kinetics from Tanner 2007, 2012, and thesis
         # Equilibrium constants
         # todo cite
-        K1 = 2.6e4  # per mole Ca
+        K1 = 1.47e5  # per mole Ca
         K2 = 1.3e2  # unit-less
         K3 = 9.1e-1  # unit-less
         K4 = None  # moles Ca
         # Forward Rate constants - !!! r14 is overridden to 0 ms-1 in _r14()
         # todo cite
-        k_12 = 1e8  # per mole Ca per sec
+        k_12 = 1.7e8  # per mole Ca per sec
         k_23 = 1.4e4  # per sec
         k_34 = 2e3  # per sec
         k_41 = 110  # per sec

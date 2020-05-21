@@ -486,7 +486,7 @@ class Head:
             # ## Translate those values to an (x,y) position
             tip = (g_len * m.cos(c_ang), g_len * m.sin(c_ang))
             # ## Only a bop that lands short of the thin fil is valid
-            bop_right = bs[1] >= tip[1]
+            bop_right = bs[1] >= tip[1] > 0
         # ## Find the distance to the binding site
         distance = m.hypot(bs[0] - tip[0], bs[1] - tip[1])
 

@@ -438,7 +438,6 @@ class hs:
 
         # ## Tropomyosin species concentrations
         self.c_tn = None
-        self.c_ca = None,
         self.c_tnca = None
         # TODO determine if we need to self.update_concentrations()
 
@@ -578,7 +577,7 @@ class hs:
         # Run through each timestep
         for i in range(time_steps):
             try:
-                self.timestep()
+                self.timestep(i)
                 output.append(callback())
                 # Update us on how it went
                 toc = int((time.time() - tic) / (i + 1) * (time_steps - i - 1))
@@ -619,7 +618,7 @@ class hs:
 
         # Update bound states
         self.last_transitions = [thick.transition() for thick in self.thick]
-        self.update_concentrations()
+        # self.update_concentrations()
         self.tm_transitions = [thin.transition() for thin in self.thin]  # TODO: work into storage
 
         # Settle forces
@@ -708,8 +707,11 @@ class hs:
 
     def update_concentrations(self):
         self.c_tn = self._concentration(self._tn_count)
-        self.c_ca = 10.0 ** (-self.pCa)
         self.c_tnca = self._concentration(self.tnca_count)
+
+    @property
+    def c_ca(self):
+        return 10.0 ** (-self.pCa)
 
     @property
     def concentrations(self):

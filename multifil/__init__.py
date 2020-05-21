@@ -1,9 +1,5 @@
-import ujson as json
-from . import hs
-from . import aws
-# from . import utilities
+from multifil import utilities
+from multifil import hs
+from multifil import aws
 
-print_json_module = False
-if print_json_module:
-    print(json)
 print("imported tropomyosin multifil")
