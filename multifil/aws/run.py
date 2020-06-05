@@ -15,18 +15,18 @@ run.s3 maintains a persistent s3 connection through all of this
 
 Created by Dave Williams on 2016-07-02
 """
-from .. import json
-import multiprocessing as mp
+
+import sys
 import os
 import shutil
 import subprocess
-import sys
 import time
-
+import multiprocessing as mp
 import boto
 import numpy as np
 
-from .. import hs
+from multifil import hs
+from multifil.utilities import use_aws, json
 
 
 # ## Manage a local run
@@ -46,7 +46,10 @@ class manage:
             Whether to complete the run without further intervention or treat
             as an interactive session.
         """
-        self.s3 = None  # s3()  # todo - generalize aws startup logic, currently gutted (see line 130)
+        if use_aws:
+            self.s3 = s3()
+        else:
+            self.s3 = None
         self.uuid = os.path.basename(metafile).split('.')[0]
         self.working_dir = self._make_working_dir(self.uuid)
         self.metafile = self._parse_metafile_location(metafile)
@@ -335,6 +338,7 @@ class data_file:
             'tm_rate_43': [],
             'tm_rate_41': [],
             'tm_rate_14': [],
+            'titin_axial_force': [],
         }
 
     def append(self):
@@ -396,6 +400,7 @@ class data_file:
         ad('tm_rate_43', tm_rates['tm_rate_43'])
         ad('tm_rate_41', tm_rates['tm_rate_41'])
         ad('tm_rate_14', tm_rates['tm_rate_14'])
+        ad('titin_axial_force', self.sarc.titin_axial_force())
 
     def finalize(self):
         """Write the data dict to the temporary file location"""
@@ -436,6 +441,7 @@ class s3:
         return bucket
 
     def pull_from_s3(self, name, local='./'):
+        # noinspection PyUnresolvedReferences
         """Given a key on S3, download it to a local file
 
         Parameters
@@ -452,10 +458,10 @@ class s3:
 
         Examples
         --------
-        # >>>pull_from_s3('s3://just_a_test_bucket/test')
-        # >>>os.remove('test')
-        # >>>pull_from_s3('just_a_test_bucket/test')
-        # >>>os.remove('test')
+        >>>pull_from_s3('s3://just_a_test_bucket/test')
+        >>>os.remove('test')
+        >>>pull_from_s3('just_a_test_bucket/test')
+        >>>os.remove('test')
         """
         # Parse name
         bucket_name = [n for n in name.split('/') if len(n) > 3][0]  # rm s3:// & /
@@ -566,12 +572,12 @@ class manage_async:
         for manager in self.managers:
             self.processes.append(mp.Process(target=manager.run_and_save, args=()))
 
-        if unattended:
-            try:
-                self.run_and_save()
-            except Exception as e:
-                mp.current_process().terminate()
-                print(e)
+            if unattended:
+                try:
+                    self.run_and_save()
+                except Exception as e:
+                    mp.current_process().terminate()
+                    print(e)
 
     def run_and_save(self):
         start = time.time()

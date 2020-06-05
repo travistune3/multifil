@@ -800,6 +800,10 @@ class hs:
         """Sum of each thick filament's axial force on the M-line """
         return sum([thick.effective_axial_force() for thick in self.thick])
 
+    def titin_axial_force(self):
+        """Sum of each thick filament's axial force on the M-line """
+        return sum([titin.axial_force() for titin in self.titin])
+
     def radial_tension(self):
         """The sum of the thick filaments' radial tensions"""
         return sum([t.radial_tension() for t in self.thick])

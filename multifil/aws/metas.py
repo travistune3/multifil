@@ -1,5 +1,6 @@
 #!/usr/bin/env python
 # encoding: utf-8
+# noinspection PyUnresolvedReferences
 """
 metas.py - create the meta file that will configure a run
 
@@ -12,13 +13,13 @@ and where it will be stored after completion.
 
 Example
 --------
-# >>> freq, phase = 10, .8
-# >>> time_trace = metas.time_trace(.1, 10)
-# >>> zline = metas.zline_workloop(1250, 25, freq, time_trace)
-# >>> activation = metas.actin_permissiveness_workloop(freq, phase, 10, 3, 3,
-# ...  time_trace)
-# >>> metas.emit('./', None, time_trace, z_line=zline,
-# ...  actin_permissiveness=activation, write=False, phase=phase, freq=freq)
+>>> freq, phase = 10, .8
+>>> time_trace = metas.time_trace(.1, 10)
+>>> zline = metas.zline_workloop(1250, 25, freq, time_trace)
+>>> activation = metas.actin_permissiveness_workloop(freq, phase, 10, 3, 3,
+...  time_trace)
+>>> metas.emit('./', None, time_trace, z_line=zline,
+...  actin_permissiveness=activation, write=False, phase=phase, freq=freq)
 {'actin_permissiveness': None,
 ...  'actin_permissiveness_func': None,
 ...  'comment': None,
@@ -36,11 +37,11 @@ Example
 Created by Dave Williams on 2017-03-08
 """
 
-from .. import json
 import os
 import uuid
-
 import numpy as np
+
+from multifil.utilities import json
 
 
 # ## Define traces to be used in runs
@@ -185,7 +186,7 @@ def emit(path_local, path_s3, time, poisson=0.0, ls=None, z_line=None,
 
     Examples
     --------
-#    >>> emit('./', None, .1, 100, write=False)
+    # >>> emit('./', None, .1, 100, write=False)
     {'actin_permissiveness': None,
     ...  'actin_permissiveness_func': None,
     ...  'comment': None,

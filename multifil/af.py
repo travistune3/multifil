@@ -232,14 +232,12 @@ class ThinFace:
 
     def nearest(self, axial_location):
         """Where is the nearest binding site?
-
         There a fair number of cases that must be dealt with here. When
         the system becomes too short (and some nearest queries are being
         directed to a thin face that doesn't really have anything near
         that location) the face will just return the nearest location and
         let the kinetics deal with the fact that binding is about as likely
         as stepping into the same river twice.
-
         Parameters:
             axial_location: the axial coordinates to seek a match for
         Return:
@@ -258,7 +256,7 @@ class ThinFace:
             dists = np.abs((face_locs[prev_index] - axial_location,
                             face_locs[next_index] - axial_location))
         else:
-            return self.binding_sites[prev_index]   # If at end, return end
+            return self.binding_sites[prev_index] # If at end, return end
         # If prior site was closer, give it, else give next
         if dists[0] < dists[1]:
             return self.binding_sites[prev_index]

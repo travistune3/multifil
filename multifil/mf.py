@@ -673,10 +673,26 @@ class ThickFilament:
         # Find the distance from crown to crown, then the resulting forces
         dists = np.diff(axial_locations)
         spring_force = (dists - self.rests) * self.k
-        spring_force = np.hstack([spring_force, 0])     # Last node not connected
-        # Zero would be the force of titin, were it in the model
+        # Location zero is the force of titin
+        titin_force = self._normed_total_titin_force()
+        spring_force = np.hstack([spring_force, titin_force])
         net_force_at_crown = np.diff(spring_force)
         return net_force_at_crown
+
+    def _normed_total_titin_force(self):
+        """Settle expects to move nodes to satisfy springs of stiffness self.k.
+        Titin has a different stiffness. We express the force titin is
+        generating in terms of the thick fil stiffness in order to treat the
+        movement necessary to balance the node attached to titin the same as
+        the movement necessary to balance the force of the thick filaments.
+        """
+        normed_titin_forces = []
+        for thick_face in self.thick_faces:
+            titin = thick_face.titin_fil
+            titin_force = titin.axial_force()
+            normed = titin_force * titin.stiffness() / self.k
+            normed_titin_forces.append(normed)
+        return np.sum(normed_titin_forces)
 
     @staticmethod
     def _radial_force_to_components(crown_force, orientation):
