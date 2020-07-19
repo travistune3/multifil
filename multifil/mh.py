@@ -347,13 +347,17 @@ class Head:
             'konstant_weak': 2,
             'konstant_strong': 2})
         # Free energy calculation helpers
-        g_atp = 13  # In units of RT
+        g_atp = 13  # In units of RT  # 9JUN2020 TODO CHECK RT vs KT - J vs pN*nm
         atp = 5 * 10 ** -3
         adp = 30 * 10 ** -6
         phos = 3 * 10 ** -3
-        deltaG = abs(-g_atp - log(atp / (adp * phos)))
+        deltaG = abs(-g_atp - log(atp / (adp * phos)))  # in units of KT
         self.alphaDG = 0.28 * -deltaG
         self.etaDG = 0.68 * -deltaG
+        self._tip = None    # WARNING - this is only for use by the Head Class and no one else. Use property Head.tip
+        self._tip_ts = -1   # WARNING - this is only for use by the Head Class and no one else. Use property Head.tip
+        self._br = 1    # binding rate modifier
+        self._dr = 1    # detachment rate modifier
 
     def transition(self, bs, ap):
         """Transition to a new state (or not)
@@ -439,7 +443,7 @@ class Head:
         if state is None:
             state = self.state
         (ang, dist) = self._seg_values(tip_location)
-        xb_energy = self.c.energy(ang, state) + self.g.energy(dist, state)
+        xb_energy = self.c.energy(ang, state) + self.g.energy(dist, state)  # TODO 9JUN2020 Check units
         return xb_energy
 
     @property
@@ -453,6 +457,39 @@ class Head:
         raise AttributeError("method timestep_len in class Head must be overridden by Child class.")
         # Prevent inheritance issues where Head objects cycle at ts_l = 1 ms if not told otherwise.
         # AMA 25MAR2020
+
+    @property
+    def _current_ts(self):
+        raise AttributeError("method current_ts in class Head must be overridden by Child class.")
+        # Prevent inheritance issues
+        # AMA 24JUN2020
+
+    @property
+    def _current_ls(self):
+        raise AttributeError("method current_ls in class Head must be overridden by Child class.")
+        # Prevent inheritance issues
+        # AMA 24JUN2020
+
+    @property
+    def unbound_tip_loc(self):
+        if self._tip is None or self._tip_ts != self._current_ts:
+            self._update_tip()
+        return self._tip
+
+    def _update_tip(self):
+        # ## Flag indicates successful diffusion
+        bop_right = False
+        tip = None
+        while bop_right is False:
+            # ## Bop the springs to get new values
+            c_ang = self.c.bop()
+            g_len = self.g.bop()
+            # ## Translate those values to an (x,y) position
+            tip = (g_len * m.cos(c_ang), g_len * m.sin(c_ang))
+            # ## Only a bop that lands short of the thin fil is valid
+            bop_right = self._current_ls >= tip[1] > 0
+        self._tip = tip
+        self._tip_ts = self._current_ts
 
     def _prob(self, rate):
         """Convert a rate to a probability, based on the current timestep
@@ -476,25 +513,15 @@ class Head:
         Returns:
             probability: chance of binding occurring during a timestep
         """
-        # ## Flag indicates successful diffusion
-        bop_right = False
-        tip = None
-        while bop_right is False:
-            # ## Bop the springs to get new values
-            c_ang = self.c.bop()
-            g_len = self.g.bop()
-            # ## Translate those values to an (x,y) position
-            tip = (g_len * m.cos(c_ang), g_len * m.sin(c_ang))
-            # ## Only a bop that lands short of the thin fil is valid
-            bop_right = bs[1] >= tip[1] > 0
         # ## Find the distance to the binding site
+        tip = self.unbound_tip_loc
         distance = m.hypot(bs[0] - tip[0], bs[1] - tip[1])
 
         # ## The binding rate is dependent on the exp of the dist
         # Rate = \tau * \exp^{-dist^2}
         rate = 72 * m.exp(-distance ** 2)
         # ## Return the rate
-        return rate
+        return self._br * rate
 
     def _r21(self, bs):
         """The reverse transition, from loosely bound to unbound
@@ -507,7 +534,7 @@ class Head:
             bs: relative Crown to Actin distance (x,y)
             ap: Actin binding permissiveness, from 0 to 1
         Returns:
-            prob: probability of transition
+            rate: per ms rate of transition
         """
         # ## The rate depends on the states' free energies
         unbound_free_energy = self._free_energy(bs, "free")
@@ -569,7 +596,7 @@ class Head:
         # loose_energy = self.energy(bs, "loose")
         tight_energy = self.energy(bs, "tight")
         rate = m.sqrt(0.01 * tight_energy) + 0.02
-        return float(rate)
+        return self._dr * float(rate)
 
     def _free_energy(self, tip_location, state):
         """Free energy of the Head
@@ -606,8 +633,8 @@ class Crossbridge(Head):
 
     # kwargs that can be used to edit crossbridge phenotype
     # crossbridge can also accept phenotype profiles
-    VALID_PARAMS = ['mh_c_ks', 'mh_c_kw', 'mh_c_rw', 'mh_c_rs',
-                    'mh_g_ks', 'mh_g_kw', 'mh_g_rw', 'mh_g_rs']
+    VALID_PARAMS = {'mh_c_ks': "pN/rad", 'mh_c_kw': "pN/rad", 'mh_c_rw': "rad", 'mh_c_rs': "rad",
+                    'mh_g_ks': "pN/nm", 'mh_g_kw': "pN/nm", 'mh_g_rw': "nm", 'mh_g_rs': "nm", "mh_br": "au"}
 
     def __init__(self, index, parent_face, thin_face, **mh_params):
         """Set up the cross-bridge
@@ -710,6 +737,16 @@ class Crossbridge(Head):
         """Timestep size is stored at the half-sarcomere level"""
         return self.parent_face.parent_filament.parent_lattice.timestep_len
 
+    @property
+    def _current_ts(self):
+        """Timestep size is stored at the half-sarcomere level"""
+        return self.parent_face.parent_filament.parent_lattice.current_timestep
+
+    @property
+    def _current_ls(self):
+        """Ask our superiors for lattice spacing data"""
+        return self.parent_face.lattice_spacing
+
     def transition(self, **kwargs):
         """Gather the needed information and try a transition
 
@@ -721,15 +758,15 @@ class Crossbridge(Head):
         # When unbound, try to bind, otherwise just try a transition
         if self.bound_to is None:
             # Find the lattice spacing
-            lattice_spacing = self._get_lattice_spacing()
+            lattice_spacing = self._current_ls
             # Find this cross-bridge's axial location
-            xb_axial_loc = self.axial_location
+            cr_axial_loc = self.axial_location
             # Find the potential binding site
-            actin_site = self.thin_face.nearest(xb_axial_loc)
+            actin_site = self.thin_face.nearest(cr_axial_loc + self.unbound_tip_loc[0])  # closest to the myosin head
             actin_axial_loc = actin_site.axial_location
             actin_state = actin_site.permissiveness
             # Find the axial separation
-            axial_sep = actin_axial_loc - xb_axial_loc
+            axial_sep = actin_axial_loc - cr_axial_loc
             # Combine the two distances
             distance_to_site = (axial_sep, lattice_spacing)
             # Allow the myosin head to take it from here
@@ -821,7 +858,7 @@ class Crossbridge(Head):
         # Are you really bound?
         assert (self.bound_to is not None), "Lies, you're unbound!"
         # Find the lattice spacing
-        lattice_spacing = self._get_lattice_spacing()
+        lattice_spacing = self._current_ls
         # Find this cross-bridge's axial location if need be
         if xb_axial_loc is None:
             xb_axial_loc = self.axial_location
@@ -830,10 +867,6 @@ class Crossbridge(Head):
             tip_axial_loc = self.bound_to.axial_location
         # Combine the two distances
         return tip_axial_loc - xb_axial_loc, lattice_spacing
-
-    def _get_lattice_spacing(self):
-        """Ask our superiors for lattice spacing data"""
-        return self.parent_face.lattice_spacing
 
     def _process_params(self, mh_params):
         """converter definitions"""
@@ -887,6 +920,18 @@ class Crossbridge(Head):
         if key in mh_params.keys():
             self.g.r_s = mh_params.pop(key)
         self.constants[key] = self.g.r_s
+        
+        # binding rate modifier
+        key = 'mh_br'
+        if key in mh_params.keys():
+            self._br = mh_params.pop(key)
+        self.constants[key] = self._br
+
+        # detachment rate modifier
+        key = 'mh_dr'
+        if key in mh_params.keys():
+            self._dr = mh_params.pop(key)
+        self.constants[key] = self._dr
 
 
 if __name__ == '__main__':

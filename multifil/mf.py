@@ -305,7 +305,7 @@ class ThickFilament:
     It is attached to the m-line at one end and to nothing
     at the other (yet).
     """
-    VALID_PARAMS = ['mf_k']
+    VALID_PARAMS = {'mf_k': "pN/nm"}
 
     def __init__(self, parent_lattice, index, thin_faces, start, **mf_params):
         """Initialize the thick filament.

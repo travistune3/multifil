@@ -363,7 +363,7 @@ class ThinFilament:
     [Gunning2015]:http://dx.doi.org/10.1242/jcs.172502
     """
 
-    VALID_PARAMS = ["af_k"]
+    VALID_PARAMS = {"af_k": "pN/nm"}
 
     def __init__(self, parent_lattice, index, face_orientations, start=0, **af_params):
         """Initialize the thin filament

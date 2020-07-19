@@ -19,11 +19,11 @@ from . import ti
 
 class hs:
     """The half-sarcomere and ways to manage it"""
-    VALID_PARAMS = []
+    VALID_PARAMS = {}
     for component in [mf.ThickFilament, mf.mh.Crossbridge,
                       af.ThinFilament, af.tm.TmSite,
                       ti.Titin]:
-        VALID_PARAMS.extend(component.VALID_PARAMS)
+        VALID_PARAMS.update(component.VALID_PARAMS)
 
     def __init__(self, lattice_spacing=None, z_line=None, poisson=None,
                  pCa=None, timestep_len=1, time_dependence=None, starts=None, **kwargs):

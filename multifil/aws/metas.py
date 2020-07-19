@@ -134,6 +134,29 @@ def actin_permissiveness_workloop(freq, phase, stim_duration,
     return out[2 * cycle_step_number:2 * cycle_step_number + number_of_timesteps]
 
 
+# assumes millisecond time input
+def calcium_transient(t, amp, tp, w, asy):
+    t /= 1000
+    return amp * np.exp(-((t ** asy - tp) / w) ** 2)
+
+
+def twitch_pCa_trace(amp, tp, w, asy, time, stt, dur):
+    ca = []
+    front = []
+    for t in time:
+        if t < dur:
+            ca.append(calcium_transient(t, amp, tp, w, asy))
+        if t < stt:
+            front.append(-1)
+    baseline = -np.log10(ca[-1])
+    pCa = [baseline for _ in front]
+    for c_ca in ca:
+        pCa.append(-np.log10(c_ca))
+    while len(pCa) < len(time):
+        pCa.append(baseline)
+    return pCa
+
+
 # ## Configure a run via a saved meta file
 def emit(path_local, path_s3, time, poisson=0.0, ls=None, z_line=None,
          pCa=None, comment=None, write=True, hs_params=None, **kwargs):

@@ -18,7 +18,7 @@ class Titin:
 
     # kwargs that can be used to edit titin phenotype
     # titin can also accept phenotype profiles
-    VALID_PARAMS = ['ti_a', 'ti_b']
+    VALID_PARAMS = {'ti_a': "pN", 'ti_b': "nm-1"}
 
     def __init__(self, parent_lattice, index, thick_face, thin_face, **ti_params):
         """Initialize the titin filament.
@@ -53,8 +53,8 @@ class Titin:
         # ## calculate forces
         self.rest = 120  # nm, no citation TODO cite
         # Create the constants that determine force
-        self.a = 240
-        self.b = 0.0045
+        self.a = 240        # pN
+        self.b = 0.0045     # nm-1
 
         """Handle ti_params"""
         # ## Handle ti_isomer calculations

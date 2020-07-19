@@ -39,9 +39,9 @@ class TmSite:
 
     # kwargs that can be used to edit tm_site phenotype
     # tm_site can also accept phenotype profiles
-    VALID_PARAMS = ['tm_coop',
-                    'tm_K1', 'tm_k_12', 'tm_K2', 'tm_k_23',
-                    'tm_K3', 'tm_k_34', 'tm_K4', 'tm_k_41']
+    VALID_PARAMS = {'tm_coop': "AU",
+                    'tm_K1': "mol(Ca)-1", 'tm_k_12': "mol(Ca)-1*ms-1", 'tm_K2': "none", 'tm_k_23': "ms-1",
+                    'tm_K3': "none", 'tm_k_34': "ms-1", 'tm_K4': "mol(Ca)", 'tm_k_41': "ms-1"}
 
     def __init__(self, parent_tm, binding_site, index, **tm_params):
         """ A single tropomyosin site, paired to a binding site
