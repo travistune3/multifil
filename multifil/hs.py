@@ -700,7 +700,7 @@ class hs:
         """Calculate the fraction of cross-bridges in each state"""
         nested = [t.get_states() for t in self.thick]
         xb_states = [xb for fil in nested for face in fil for xb in face]
-        num_in_state = [xb_states.count(state) for state in range(3)]
+        num_in_state = [xb_states.count(state) for state in range(4)]
         frac_in_state = [n / float(len(xb_states)) for n in num_in_state]
         return frac_in_state
 

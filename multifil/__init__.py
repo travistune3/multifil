@@ -6,4 +6,4 @@ from . import aws
 print_json_module = False
 if print_json_module:
     print(json)
-print("imported myosin multifil")
+print("imported SRX-enabled multifil")
