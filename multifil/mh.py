@@ -355,8 +355,9 @@ class Head:
         deltaG = abs(-g_atp - log(atp / (adp * phos)))
         self.alphaDG = 0.28 * -deltaG   # weak state efficiency: 0.28
         self.etaDG = 0.68 * -deltaG     # strong state efficiency: 0.68
-        # The time_trace-step, master of all time_trace
-        self._timestep = 1  # ms
+        self._tip = None    # WARNING - this is ONLY for use by the Head Class. Use property Head.unbound_tip_loc
+        self._tip_ts = -1   # WARNING - this is ONLY for use by the Head Class. Use property Head._current_ts
+
         # Force sensitive detachment information
         self.detach_rate_type = 'original'
         self.fd_k_0 = 102 * 1e-3
@@ -379,12 +380,10 @@ class Head:
         check = random.rand()
         # # ## Check for transitions depending on the current state
         if self.state == "free":
-            tip = self._get_tip(bs)
-            srx_bs = (self.g.r_w, 0)
-            if self._prob(self._bind(bs, tip)) * ap > check:
+            if self._prob(self._bind(bs)) * ap > check:
                 self.state = "loose"
                 return '12'
-            elif (1 - self._prob(self._bind(srx_bs, tip))) < check:
+            elif (1 - self._prob(self._r14())) < check:
                 self.state = "inactive"
                 # print("+", end='')
                 return '14'
@@ -403,7 +402,7 @@ class Head:
                 self.state = "loose"
                 return '32'
         elif self.state == 'inactive':
-            if self._prob(self._r41(bs)) > check:
+            if self._prob(self._r41()) > check:
                 self.state = "free"
                 # print("-", end='')
                 return '41'
@@ -473,9 +472,47 @@ class Head:
 
     @property
     def timestep_len(self):
-        raise AttributeError("method timestep_len in class Head must be overridden by Child class.")
+        raise AttributeError("property timestep_len in class Head must be overridden by Child class.")
         # Prevent inheritance issues where Head objects cycle at ts_l = 1 ms if not told otherwise.
         # AMA 25MAR2020
+
+    @property
+    def _current_ts(self):
+        raise AttributeError("property current_ts in class Head must be overridden by Child class.")
+        # Prevent inheritance issues
+        # AMA 24JUN2020
+
+    @property
+    def _current_ls(self):
+        raise AttributeError("property current_ls in class Head must be overridden by Child class.")
+        # Prevent inheritance issues
+        # AMA 24JUN2020
+
+    def _filament_force(self):
+        raise AttributeError("method current_ls in class Head must be overridden by Child class.")
+        # Prevent inheritance issues
+        # AMA 3AUG2020
+
+    @property
+    def unbound_tip_loc(self):
+        if self._tip is None or self._tip_ts != self._current_ts:
+            self._update_tip()
+        return self._tip
+
+    def _update_tip(self):
+        # ## Flag indicates successful diffusion
+        bop_right = False
+        tip = None
+        while bop_right is False:
+            # ## Bop the springs to get new values
+            c_ang = self.c.bop()
+            g_len = self.g.bop()
+            # ## Translate those values to an (x,y) position
+            tip = (g_len * m.cos(c_ang), g_len * m.sin(c_ang))
+            # ## Only a bop that lands short of the thin fil is valid
+            bop_right = self._current_ls >= tip[1] > 0
+        self._tip = tip
+        self._tip_ts = self._current_ts
 
     def _prob(self, rate):
         """Convert a rate to a probability, based on the current timestep
@@ -487,25 +524,11 @@ class Head:
             rate: a per ms rate to convert to probability
         Returns:
             probability: the probability the event occurs during a timestep
-                of length determined by self.timestep
+                of length determined by self.timestep_len
         """
         return 1 - m.exp(-rate * self.timestep_len)
 
-    def _get_tip(self, bs):
-        # # ## Flag indicates successful diffusion
-        bop_right = False
-        tip = None
-        while bop_right is False:
-            # # ## Bop the springs to get new values
-            c_ang = self.c.bop()
-            g_len = self.g.bop()
-            # # ## Translate those values to an (x,y) position
-            tip = (g_len * m.cos(c_ang), g_len * m.sin(c_ang))
-            # # ## Only a bop that lands short of the thin fil is valid
-            bop_right = bs[1] >= tip[1] > 0
-        return tip
-
-    def _bind(self, bs, tip):
+    def _bind(self, bs):
         """Bind (or don't) based on the distance from the Head tip to a Actin
 
         Takes:
@@ -513,13 +536,14 @@ class Head:
         Returns:
             probability: chance of binding occurring during a timestep
         """
-        # # ## Find the distance to the binding site
+        # ## Find the distance to the binding site
+        tip = self.unbound_tip_loc
         distance = m.hypot(bs[0] - tip[0], bs[1] - tip[1])
 
-        # # ## The binding rate is dependent on the exp of the dist
+        # ## The binding rate is dependent on the exp of the dist
         # Rate = \tau * \exp^{-dist^2}
         rate = 72 * m.exp(-distance ** 2)
-        # # ## Return the rate
+        # ## Return the rate
         return rate
 
     def _r21(self, bs):
@@ -541,7 +565,7 @@ class Head:
         # # ## Rate, as in pg 1209 of Tanner et al, 2007
         # # ## With added reduced-detachment factor, increases dwell time_trace
         try:
-            rate = self._bind(bs, bs) / m.exp(
+            rate = self._bind(bs) / m.exp(
                 unbound_free_energy - loose_free_energy)
         except ZeroDivisionError:
 
@@ -605,6 +629,31 @@ class Head:
         else:  # rate type is not valid
             print("supplied:", self.detach_rate_type)
             raise TypeError("supplied detachment_rate key is not valid")
+
+    def _r14(self):
+        """Bind (or don't) based on the distance from the unbound tip location to the 'backbone' site
+            Takes:
+                self
+            Returns:
+                probability: chance of binding occurring during a timestep
+        """
+        # ## Find the distance to the binding site
+        tip = self.unbound_tip_loc
+        srx_bs = (self.g.r_w, 0)    # Completely folded back, linear spring very happy, torsional spring very unhappy
+        distance = m.hypot(srx_bs[0] - tip[0], srx_bs[1] - tip[1])
+
+        # ## The binding rate is dependent on the exp of the dist
+        # Rate = \tau * \exp^{-dist^2}
+        rate = 72 * m.exp(-distance ** 2)
+        # ## Return the rate
+        return rate
+
+    def _r41(self):
+        k_srx = 5e-3
+        thick_fil_force = self._filament_force()
+
+        rate = k_srx * thick_fil_force
+        return rate
 
     def _free_energy(self, tip_location, state):
         """Free energy of the Head
@@ -712,7 +761,7 @@ class Crossbridge(Head):
             bound_to: None or the address of the bound binding site
         """
         xbd = self.__dict__.copy()
-        xbd.pop('_timestep')
+        # xbd.pop('_timestep')
         xbd.pop('index')
         xbd.pop('c')
         xbd.pop('g')
@@ -747,6 +796,20 @@ class Crossbridge(Head):
         """Timestep size is stored at the half-sarcomere level"""
         return self.parent_face.parent_filament.parent_lattice.timestep_len
 
+    @property
+    def _current_ts(self):
+        """Current timestep is stored at the half-sarcomere level"""
+        return self.parent_face.parent_filament.parent_lattice.current_timestep
+
+    @property
+    def _current_ls(self):
+        """Ask our superiors for lattice spacing data"""
+        return self.parent_face.lattice_spacing
+
+    def _filament_force(self):
+        """Get the effective axial force of the thick filament this motor head is a part of"""
+        return self.parent_face.parent_filament.effective_axial_force()
+
     def transition(self, **kwargs):
         """Gather the needed information and try a transition
 
@@ -759,13 +822,13 @@ class Crossbridge(Head):
         if self.state == 'inactive':
             assert(self.bound_to is None), 'Bound state mismatch'
             trans = super(Crossbridge, self).transition((self.g.r_w, 0),
-                                                        0, force=None)      # force is not relevant for leaving SRX
+                                                        0, force=None)
             assert (trans in (None, '41')), 'Bound state mismatch'
 
         # When unbound, try to bind, otherwise just try a transition
         elif self.bound_to is None:
             # Find the lattice spacing
-            lattice_spacing = self._get_lattice_spacing()
+            lattice_spacing = self._current_ls
             # Find this cross-bridge's axial location
             xb_axial_loc = self.axial_location
             # Find the potential binding site
@@ -872,7 +935,7 @@ class Crossbridge(Head):
         # Are you really bound?
         assert (self.bound_to is not None), "Lies, you're unbound!"
         # Find the lattice spacing
-        lattice_spacing = self._get_lattice_spacing()
+        lattice_spacing = self._current_ls
         # Find this cross-bridge's axial location if need be
         if xb_axial_loc is None:
             xb_axial_loc = self.axial_location
@@ -881,10 +944,6 @@ class Crossbridge(Head):
             tip_axial_loc = self.bound_to.axial_location
         # Combine the two distances
         return tip_axial_loc - xb_axial_loc, lattice_spacing
-
-    def _get_lattice_spacing(self):
-        """Ask our superiors for lattice spacing data"""
-        return self.parent_face.lattice_spacing
 
     def _process_params(self, mh_params):
         """converter definitions"""

@@ -35,9 +35,10 @@ def t_spring(stiffness=40, ms_p_ts=0.5, duration=500):
         time=time  # time_trace
     )
 
-    params = {"mh_c_ks":stiffness, "mh_c_kw":stiffness}
+    params = {"mh_c_ks": stiffness, "mh_c_kw": stiffness}
 
     return time, length, ap, params
+
 
 def davis_t_spring(stiffness=40):
     time = metas.time_trace(
@@ -75,6 +76,39 @@ def davis_calcium_transient(treatment="WT"):
     import json
     with open("davis_2016_ca_as_ap.json", 'r') as ca_file:
         return json.load(ca_file)[treatment]
+
+
+def sparrow2019AP(max_ap=None):
+    import json
+    with open("sparrow2019.json", 'r') as ca_file:
+        ca = json.load(ca_file)["AP"]
+    if max_ap is not None:
+        return list(np.array(ca) * max_ap)
+    return ca
+
+
+def naiveLineSmoothing(time, variable, bin_size=10):
+    s_time = _run_avg(time, bin_size=bin_size)
+    s_var = _run_avg(variable, bin_size)
+
+    return s_time, s_var
+
+
+def _run_avg(series, bin_size, asymptote=True):
+    array = []
+    result = []
+    for i in range(len(series)):
+        if i < bin_size:
+            array.append(series[i])
+        else:
+            array[i % bin_size] = series[i]
+        result.append(np.average(array))
+    if asymptote:
+        for e in range(0, bin_size):
+            for j in range(e, bin_size):
+                array[j] = series[-1]
+        result.append(np.average(array))
+    return result
 
 
 def stepsize_to_tht_mag(step_size, mh_c_rw=radians(47.16), mh_g_rw=19.93):
