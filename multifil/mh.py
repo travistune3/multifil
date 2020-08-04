@@ -821,7 +821,8 @@ class Crossbridge(Head):
 
         if self.state == 'inactive':
             assert(self.bound_to is None), 'Bound state mismatch'
-            trans = super(Crossbridge, self).transition((self.g.r_w, 0),
+            crown_to_backbone = (self.g.r_w, 0)     # coordinates from base of lever arm to backbone binding site
+            trans = super(Crossbridge, self).transition(crown_to_backbone,
                                                         0, force=None)
             assert (trans in (None, '41')), 'Bound state mismatch'
 
@@ -830,13 +831,13 @@ class Crossbridge(Head):
             # Find the lattice spacing
             lattice_spacing = self._current_ls
             # Find this cross-bridge's axial location
-            xb_axial_loc = self.axial_location
+            cr_axial_loc = self.axial_location
             # Find the potential binding site
-            actin_site = self.thin_face.nearest(xb_axial_loc)
+            actin_site = self.thin_face.nearest(cr_axial_loc + self.unbound_tip_loc[0])  # closest to the myosin head
             actin_axial_loc = actin_site.axial_location
             actin_state = actin_site.permissiveness
             # Find the axial separation
-            axial_sep = actin_axial_loc - xb_axial_loc
+            axial_sep = actin_axial_loc - cr_axial_loc
             # Combine the two distances
             distance_to_site = (axial_sep, lattice_spacing)
             # Allow the myosin head to take it from here
