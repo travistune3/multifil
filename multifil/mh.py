@@ -542,7 +542,7 @@ class Head:
         # ## Rate, as in pg 1209 of Tanner et al, 2007
         # ## With added reduced-detachment factor, increases dwell time
         try:
-            rate = self._bind(bs) / m.exp(
+            rate = (self._bind(bs) + .05)/ m.exp(
                 unbound_free_energy - loose_free_energy)
         except ZeroDivisionError:
 
@@ -578,8 +578,12 @@ class Head:
         # ## Governed as in self_p21
         loose_free_energy = self._free_energy(bs, "loose")
         tight_free_energy = self._free_energy(bs, "tight")
+        _r23 = self._r23(bs)
+        if _r23 < 10**-1:
+            _r23 = 10**-1
+            
         try:
-            rate = self._r23(bs) / m.exp(loose_free_energy - tight_free_energy)
+            rate = _r23 / m.exp(loose_free_energy - tight_free_energy)
         except ZeroDivisionError:
             rate = 1
         return float(rate)
@@ -634,7 +638,7 @@ class Crossbridge(Head):
     # kwargs that can be used to edit crossbridge phenotype
     # crossbridge can also accept phenotype profiles
     VALID_PARAMS = {'mh_c_ks': "pN/rad", 'mh_c_kw': "pN/rad", 'mh_c_rw': "rad", 'mh_c_rs': "rad",
-                    'mh_g_ks': "pN/nm", 'mh_g_kw': "pN/nm", 'mh_g_rw': "nm", 'mh_g_rs': "nm", "mh_br": "au"}
+                    'mh_g_ks': "pN/nm", 'mh_g_kw': "pN/nm", 'mh_g_rw': "nm", 'mh_g_rs': "nm", "mh_br": "au", "mh_dr": "au"}
 
     def __init__(self, index, parent_face, thin_face, **mh_params):
         """Set up the cross-bridge
@@ -777,10 +781,10 @@ class Crossbridge(Head):
                 self.bound_to = actin_site.bind_to(self)
                 if self.bound_to is None:
                     self.state = 'free'  # failed to bind TODO fix this garbage
-                    import sys
-                    msg = "\n---successfully denied---\n"
-                    sys.stdout.write(msg)
-                    sys.stdout.flush()
+                    # import sys
+                    # msg = "\n---successfully denied---\n"
+                    # sys.stdout.write(msg)
+                    # sys.stdout.flush()
                 # assert(self.bound_to.bound_to is not None)
             else:
                 assert (trans is None), 'Bound state mismatch'

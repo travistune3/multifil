@@ -40,7 +40,7 @@ Created by Dave Williams on 2017-03-08
 import os
 import uuid
 import numpy as np
-
+import pdb
 from multifil.utilities import json
 
 
@@ -148,6 +148,7 @@ def twitch_pCa_trace(amp, tp, w, asy, time, stt, dur):
             ca.append(calcium_transient(t, amp, tp, w, asy))
         if t < stt:
             front.append(-1)
+    # pdb.set_trace()
     baseline = -np.log10(ca[-1])
     pCa = [baseline for _ in front]
     for c_ca in ca:

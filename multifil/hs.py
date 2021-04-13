@@ -16,6 +16,7 @@ from . import af
 from . import mf
 from . import ti
 
+import pdb
 
 class hs:
     """The half-sarcomere and ways to manage it"""

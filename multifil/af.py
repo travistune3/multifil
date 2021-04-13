@@ -117,16 +117,16 @@ class BindingSite:
             self.bound_to = crossbridge  # record the xb's phone number
             return self  # give the xb our phone number
         else:  # we are already taken!!!
-            import sys
-            import multiprocessing as mp
-            thread = mp.current_process().name
-            msg = "\n\n" + str(thread) + " Captain's log: ts=" + str(self.parent_thin.parent_lattice.current_timestep)
-            msg += "\nTHIS ACTIN SITE: " + str(self.address)
-            msg += "\nALREADY BOUND TO:  " + str(self.bound_to.address)
-            msg += "\nTRYING TO BIND TO: " + str(crossbridge.address)
-            msg += "\n---Denying access---"
-            sys.stdout.write(msg)
-            sys.stdout.flush()
+            # import sys
+            # import multiprocessing as mp
+            # thread = mp.current_process().name
+            # msg = "\n\n" + str(thread) + " Captain's log: ts=" + str(self.parent_thin.parent_lattice.current_timestep)
+            # msg += "\nTHIS ACTIN SITE: " + str(self.address)
+            # msg += "\nALREADY BOUND TO:  " + str(self.bound_to.address)
+            # msg += "\nTRYING TO BIND TO: " + str(crossbridge.address)
+            # msg += "\n---Denying access---"
+            # sys.stdout.write(msg)
+            # sys.stdout.flush()
             return None  # don't give this xb our phone number
 
     def unbind(self):
