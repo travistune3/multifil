@@ -24,6 +24,8 @@ import time
 import multiprocessing as mp
 import boto
 import numpy as np
+import pdb
+
 
 from multifil import hs
 from multifil.utilities import use_aws, json
@@ -77,9 +79,10 @@ class manage:
 
     def _parse_metafile_location(self, metafile):
         """Parse the passed location, downloading the metafile if necessary"""
+        # pdb.set_trace()
         if not os.path.exists(metafile):
-            raise FileNotFoundError("meta file not found")
-            # return self.s3.pull_from_s3(metafile, self.working_dir)
+            print("meta file not found locally, look at path_s3")
+            return self.s3.pull_from_s3(metafile, self.working_dir)
         else:
             mfn = '/' + os.path.basename(metafile)
             return shutil.copyfile(metafile, self.working_dir + mfn)
@@ -138,9 +141,9 @@ class manage:
         # Upload to S3
         if self.meta['path_s3'] is not None:
             # TODO see line 50
-            raise BrokenPipeError("AWS services are not currently setup for multifil.")
-            # s3_loc = self.meta['path_s3']
-            # self.s3.push_to_s3(temp_loc, s3_loc)
+            # raise BrokenPipeError("AWS services are not currently setup for multifil.")
+            s3_loc = self.meta['path_s3']
+            self.s3.push_to_s3(temp_loc, s3_loc)
         # Store in final local path specified in the meta settings
         if self.meta['path_local'] is not None:
             local_loc = os.path.abspath(os.path.expanduser(
@@ -353,7 +356,7 @@ class data_file:
         xb_fracs = self.sarc.get_xb_frac_in_states()
         xb_trans = sum(sum(self.sarc.last_transitions, []), [])
         tm_fracs = self.sarc.get_tm_frac_in_states()
-        tm_rates = self.sarc.tm_rates()
+        # tm_rates = self.sarc.tm_rates()
         act_perm = np.mean(self.sarc.actin_permissiveness)
         thick_d = np.hstack([t.displacement_per_crown()
                              for t in self.sarc.thick])
@@ -392,15 +395,15 @@ class data_file:
         ad("tm_bound", tm_fracs[1])
         ad("tm_closed", tm_fracs[2])
         ad("tm_open", tm_fracs[3])
-        ad('tm_rate_12', tm_rates['tm_rate_12'])
-        ad('tm_rate_21', tm_rates['tm_rate_21'])
-        ad('tm_rate_23', tm_rates['tm_rate_23'])
-        ad('tm_rate_32', tm_rates['tm_rate_32'])
-        ad('tm_rate_34', tm_rates['tm_rate_34'])
-        ad('tm_rate_43', tm_rates['tm_rate_43'])
-        ad('tm_rate_41', tm_rates['tm_rate_41'])
-        ad('tm_rate_14', tm_rates['tm_rate_14'])
         ad('titin_axial_force', self.sarc.titin_axial_force())
+        # ad('tm_rate_12', tm_rates['tm_rate_12'])
+        # ad('tm_rate_21', tm_rates['tm_rate_21'])
+        # ad('tm_rate_23', tm_rates['tm_rate_23'])
+        # ad('tm_rate_32', tm_rates['tm_rate_32'])
+        # ad('tm_rate_34', tm_rates['tm_rate_34'])
+        # ad('tm_rate_43', tm_rates['tm_rate_43'])
+        # ad('tm_rate_41', tm_rates['tm_rate_41'])
+        # ad('tm_rate_14', tm_rates['tm_rate_14'])
 
     def finalize(self):
         """Write the data dict to the temporary file location"""
@@ -476,6 +479,7 @@ class s3:
         os.makedirs(local, exist_ok=True)
         # Download key
         downloaded_name = local + '/' + file_name
+        pdb.set_trace()
         key.get_contents_to_filename(downloaded_name)
         if key.size != os.stat(downloaded_name).st_size:
             print("Size mismatch, downloading again for %s: " % downloaded_name)

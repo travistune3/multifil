@@ -8,6 +8,7 @@ Created by Dave Williams on 2010-01-04.
 
 from . import mh
 import numpy as np
+import pdb
 
 
 class Crown:
@@ -597,6 +598,7 @@ class ThickFilament:
         cumulative = np.cumsum(isolated)
         # New axial locations
         self.axial += cumulative
+        # pdb.set_trace()
         return forces
 
     def radial_tension(self):
