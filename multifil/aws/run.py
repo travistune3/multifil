@@ -23,6 +23,7 @@ import subprocess
 import time
 import multiprocessing as mp
 import boto
+import boto3
 import numpy as np
 import pdb
 
@@ -48,6 +49,7 @@ class manage:
             Whether to complete the run without further intervention or treat
             as an interactive session.
         """
+        pdb.set_trace()
         if use_aws:
             self.s3 = s3()
         else:
@@ -429,7 +431,11 @@ class s3:
 
     def _refresh_s3_connection(self):
         """Reconnect to s3, the connection gets dropped sometimes"""
-        self.s3 = boto.connect_s3()
+        try:
+            self.s3 = boto.connect_s3()
+        except:
+            self.s3 = boto3.resource('s3')
+        
 
     def _get_bucket(self, bucket_name):
         """Return link to a bucket name"""
