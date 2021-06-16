@@ -1,5 +1,5 @@
 import ujson as loaded_json
 
 json = loaded_json
-use_aws = True
+use_aws = False
 
