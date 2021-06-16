@@ -49,7 +49,7 @@ class manage:
             Whether to complete the run without further intervention or treat
             as an interactive session.
         """
-        pdb.set_trace()
+        # pdb.set_trace()
         if use_aws:
             self.s3 = s3()
         else:
@@ -485,7 +485,7 @@ class s3:
         os.makedirs(local, exist_ok=True)
         # Download key
         downloaded_name = local + '/' + file_name
-        pdb.set_trace()
+        # pdb.set_trace()
         key.get_contents_to_filename(downloaded_name)
         if key.size != os.stat(downloaded_name).st_size:
             print("Size mismatch, downloading again for %s: " % downloaded_name)
