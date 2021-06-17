@@ -486,7 +486,7 @@ class s3:
         os.makedirs(local, exist_ok=True)
         # Download key
         downloaded_name = local + '/' + file_name
-        bucket.download_file(key_name[2:], downloaded_name)
+        bucket.download_file(key_name, downloaded_name)
         # key.get_contents_to_filename(downloaded_name)
         
         pdb.set_trace()
