@@ -491,7 +491,7 @@ class s3:
         
         pdb.set_trace()
         
-        if key.size != os.stat(downloaded_name).st_size:
+        if key.content_length != os.stat(downloaded_name).st_size:
             print("Size mismatch, downloading again for %s: " % downloaded_name)
             bucket.download_file(key_name[2:], downloaded_name)
         return downloaded_name
