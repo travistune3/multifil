@@ -520,13 +520,15 @@ class s3:
         if len(key_name) == 0 or key_name[-1] != '/':
             key_name += '/'
         # Parse bucket and folders
-        # bucket = self._get_bucket(bucket_name)
         # key = bucket.new_key(key_name + file_name)
         # key.set_contents_from_filename(local)
-        
+
         self.s3.meta.client.upload_file(local, bucket_name, key_name)
         
-        if key.size != os.stat(local).st_size:
+        bucket = self._get_bucket(bucket_name)
+        key = bucket.Object(key_name)
+        
+        if key.content_length != os.stat(local).st_size:
             print("Size mismatch, uploading again for %s: " % local)
             self.s3.meta.client.upload_file(local, bucket_name, key_name)
         return
