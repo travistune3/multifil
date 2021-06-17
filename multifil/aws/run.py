@@ -521,8 +521,11 @@ class s3:
             key_name += '/'
         # Parse bucket and folders
         bucket = self._get_bucket(bucket_name)
-        key = bucket.new_key(key_name + file_name)
-        key.set_contents_from_filename(local)
+        # key = bucket.new_key(key_name + file_name)
+        # key.set_contents_from_filename(local)
+        
+        bucket.put_object(body = open(local), key = filename)
+
         if key.size != os.stat(local).st_size:
             print("Size mismatch, uploading again for %s: " % local)
             key.set_contents_from_filename(local)
