@@ -480,7 +480,7 @@ class s3:
         # Connect to bucket
         bucket = self._get_bucket(bucket_name)
         # Connect to key/file
-        key = bucket.get_key(key_name)
+        key = bucket.Object(key_name)
         # Prep local dirs to receive key
         local = os.path.abspath(os.path.expanduser(local))
         os.makedirs(local, exist_ok=True)
