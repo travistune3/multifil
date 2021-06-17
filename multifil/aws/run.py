@@ -431,6 +431,7 @@ class s3:
 
     def _refresh_s3_connection(self):
         """Reconnect to s3, the connection gets dropped sometimes"""
+        pdb.set_trace()
         self.s3 = boto3.resource('s3')
         
 
