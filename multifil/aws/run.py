@@ -486,21 +486,11 @@ class s3:
         os.makedirs(local, exist_ok=True)
         # Download key
         downloaded_name = local + '/' + file_name
-        pdb.set_trace()
-        
-        s3.download_file(bucket_name, key_name, downloaded_name)
-        
-        # with open(downloaded_name, 'wb') as data:
-            
-        #     key.download_fileobj(data)
-                
-            
-        pdb.set_trace()
-        
+        bucket.download_file(key_name[2:], downloaded_name)
         # key.get_contents_to_filename(downloaded_name)
         if key.size != os.stat(downloaded_name).st_size:
             print("Size mismatch, downloading again for %s: " % downloaded_name)
-            key.get_contents_to_filename(downloaded_name)
+            bucket.download_file(key_name[2:], downloaded_name)
         return downloaded_name
 
     def push_to_s3(self, local, remote):
