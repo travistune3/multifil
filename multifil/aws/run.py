@@ -487,10 +487,6 @@ class s3:
         # Download key
         downloaded_name = local + '/' + file_name
         bucket.download_file(key_name, downloaded_name)
-        # key.get_contents_to_filename(downloaded_name)
-        
-        pdb.set_trace()
-        
         if key.content_length != os.stat(downloaded_name).st_size:
             print("Size mismatch, downloading again for %s: " % downloaded_name)
             bucket.download_file(key_name[2:], downloaded_name)
@@ -515,6 +511,9 @@ class s3:
         None
         """
         # Parse names
+        
+        pdb.set_trace()
+        
         file_name = local.split('/')[-1]
         bucket_name = [n for n in remote.split('/') if len(n) > 3][0]
         key_name = remote[len(bucket_name) + remote.index(bucket_name):]
