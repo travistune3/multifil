@@ -512,7 +512,7 @@ class s3:
         """
         # Parse names
         
-        pdb.set_trace()
+        # pdb.set_trace()
         
         file_name = local.split('/')[-1]
         bucket_name = [n for n in remote.split('/') if len(n) > 3][0]
