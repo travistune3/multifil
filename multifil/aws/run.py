@@ -470,6 +470,9 @@ class s3:
         >>>pull_from_s3('just_a_test_bucket/test')
         >>>os.remove('test')
         """
+        
+        pdb.set_trace()
+        
         # Parse name
         bucket_name = [n for n in name.split('/') if len(n) > 3][0]  # rm s3:// & /
         key_name = name[len(bucket_name) + name.index(bucket_name):]
