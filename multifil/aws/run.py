@@ -525,6 +525,8 @@ class s3:
 
         self.s3.meta.client.upload_file(local, bucket_name, key_name)
         
+        pdb.set_trace()
+        
         bucket = self._get_bucket(bucket_name)
         key = bucket.Object(key_name)
         
