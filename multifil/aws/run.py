@@ -475,7 +475,7 @@ class s3:
         
         # Parse name
         bucket_name = [n for n in name.split('/') if len(n) > 3][0]  # rm s3:// & /
-        key_name = name[len(bucket_name) + name.index(bucket_name):]
+        key_name = name[len(bucket_name) + name.index(bucket_name) + 2:]
         file_name = key_name.split('/')[-1]
         # Connect to bucket
         bucket = self._get_bucket(bucket_name)
