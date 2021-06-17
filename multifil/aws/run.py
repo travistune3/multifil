@@ -525,14 +525,14 @@ class s3:
 
         self.s3.meta.client.upload_file(local, bucket_name, file_name)
         
-        pdb.set_trace()
+        # pdb.set_trace()
         
         bucket = self._get_bucket(bucket_name)
-        key = bucket.Object(key_name)
+        key = bucket.Object(file_name)
         
         if key.content_length != os.stat(local).st_size:
             print("Size mismatch, uploading again for %s: " % local)
-            self.s3.meta.client.upload_file(local, bucket_name, key_name)
+            self.s3.meta.client.upload_file(local, bucket_name, file_name)
         return
 
 
