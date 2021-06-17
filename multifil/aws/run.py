@@ -488,6 +488,9 @@ class s3:
         downloaded_name = local + '/' + file_name
         bucket.download_file(key_name[2:], downloaded_name)
         # key.get_contents_to_filename(downloaded_name)
+        
+        pdb.set_trace()
+        
         if key.size != os.stat(downloaded_name).st_size:
             print("Size mismatch, downloading again for %s: " % downloaded_name)
             bucket.download_file(key_name[2:], downloaded_name)
