@@ -431,10 +431,7 @@ class s3:
 
     def _refresh_s3_connection(self):
         """Reconnect to s3, the connection gets dropped sometimes"""
-        try:
-            self.s3 = boto.connect_s3()
-        except:
-            self.s3 = boto3.resource('s3')
+        self.s3 = boto3.resource('s3')
         
 
     def _get_bucket(self, bucket_name):
