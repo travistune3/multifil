@@ -523,7 +523,7 @@ class s3:
         # key = bucket.new_key(key_name + file_name)
         # key.set_contents_from_filename(local)
 
-        self.s3.meta.client.upload_file(local, bucket_name, key_name)
+        self.s3.meta.client.upload_file(local, bucket_name, file_name)
         
         pdb.set_trace()
         
