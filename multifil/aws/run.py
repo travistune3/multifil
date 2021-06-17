@@ -438,13 +438,13 @@ class s3:
     def _get_bucket(self, bucket_name):
         """Return link to a bucket name"""
         try:
-            bucket = self.s3.get_bucket(bucket_name)
+            bucket = self.s3.Bucket(bucket_name)
         except (boto.exception.BotoClientError,
                 boto.exception.BotoClientError) as e:
             print(e)
             print("Trying to reconnect to s3")
             self._refresh_s3_connection()
-            bucket = self.s3.get_bucket(bucket_name)
+            bucket = self.s3.Bucket(bucket_name)
         return bucket
 
     def pull_from_s3(self, name, local='./'):
