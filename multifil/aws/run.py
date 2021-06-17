@@ -488,8 +488,11 @@ class s3:
         downloaded_name = local + '/' + file_name
         pdb.set_trace()
         
-        with open(downloaded_name, 'wb') as data:
-            key.download_fileobj(data)
+        s3.download_file(bucket_name, key_name, downloaded_name)
+        
+        # with open(downloaded_name, 'wb') as data:
+            
+        #     key.download_fileobj(data)
                 
             
         pdb.set_trace()
