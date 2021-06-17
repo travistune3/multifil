@@ -431,7 +431,7 @@ class s3:
 
     def _refresh_s3_connection(self):
         """Reconnect to s3, the connection gets dropped sometimes"""
-        pdb.set_trace()
+        # pdb.set_trace()
         self.s3 = boto3.resource('s3')
         
 
@@ -471,7 +471,7 @@ class s3:
         >>>os.remove('test')
         """
         
-        pdb.set_trace()
+        # pdb.set_trace()
         
         # Parse name
         bucket_name = [n for n in name.split('/') if len(n) > 3][0]  # rm s3:// & /
@@ -486,7 +486,7 @@ class s3:
         os.makedirs(local, exist_ok=True)
         # Download key
         downloaded_name = local + '/' + file_name
-        # pdb.set_trace()
+        pdb.set_trace()
         key.get_contents_to_filename(downloaded_name)
         if key.size != os.stat(downloaded_name).st_size:
             print("Size mismatch, downloading again for %s: " % downloaded_name)
