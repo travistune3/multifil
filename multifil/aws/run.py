@@ -486,6 +486,9 @@ class s3:
         os.makedirs(local, exist_ok=True)
         # Download key
         downloaded_name = local + '/' + file_name
+        
+        pdb.set_trace()
+        
         bucket.download_file(key_name, downloaded_name)
         if key.content_length != os.stat(downloaded_name).st_size:
             print("Size mismatch, downloading again for %s: " % downloaded_name)
