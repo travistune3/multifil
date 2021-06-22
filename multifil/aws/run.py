@@ -485,6 +485,9 @@ class s3:
         local = os.path.abspath(os.path.expanduser(local))
         os.makedirs(local, exist_ok=True)
         # Download key
+        
+        pdb.set_trace()
+        
         downloaded_name = local + '/' + file_name
         bucket.download_file(key_name, downloaded_name)
         if key.content_length != os.stat(downloaded_name).st_size:
@@ -511,25 +514,20 @@ class s3:
         None
         """
         # Parse names
-        
-        # pdb.set_trace()
-        
+
         file_name = local.split('/')[-1]
         bucket_name = [n for n in remote.split('/') if len(n) > 3][0]
-        key_name = remote[len(bucket_name) + remote.index(bucket_name):]
-        if len(key_name) == 0 or key_name[-1] != '/':
-            key_name += '/'
+        # key_name = remote[len(bucket_name) + remote.index(bucket_name):]
+        # if len(key_name) == 0 or key_name[-1] != '/':
+        #     key_name += '/'
         # Parse bucket and folders
         # key = bucket.new_key(key_name + file_name)
         # key.set_contents_from_filename(local)
 
         self.s3.meta.client.upload_file(local, bucket_name, file_name)
         
-        # pdb.set_trace()
-        
         bucket = self._get_bucket(bucket_name)
         key = bucket.Object(file_name)
-        
         if key.content_length != os.stat(local).st_size:
             print("Size mismatch, uploading again for %s: " % local)
             self.s3.meta.client.upload_file(local, bucket_name, file_name)
