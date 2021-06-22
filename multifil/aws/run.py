@@ -471,8 +471,7 @@ class s3:
         >>>os.remove('test')
         """
         
-        pdb.set_trace()
-        
+
         # Parse name
         bucket_name = [n for n in name.split('/') if len(n) > 3][0]  # rm s3:// & /
         key_name = name[len(bucket_name) + name.index(bucket_name) + 2:]
@@ -488,6 +487,9 @@ class s3:
         downloaded_name = local + '/' + file_name
         
         
+        
+        
+        pdb.set_trace()
         
         bucket.download_file(key_name, downloaded_name)
         
