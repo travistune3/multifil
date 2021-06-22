@@ -471,7 +471,7 @@ class s3:
         >>>os.remove('test')
         """
         
-        # pdb.set_trace()
+        pdb.set_trace()
         
         # Parse name
         bucket_name = [n for n in name.split('/') if len(n) > 3][0]  # rm s3:// & /
@@ -480,16 +480,19 @@ class s3:
         # Connect to bucket
         bucket = self._get_bucket(bucket_name)
         # Connect to key/file
-        key = bucket.Object(key_name)
         # Prep local dirs to receive key
         local = os.path.abspath(os.path.expanduser(local))
         os.makedirs(local, exist_ok=True)
         # Download key
-        
-        pdb.set_trace()
-        
+
         downloaded_name = local + '/' + file_name
+        
+        
+        
         bucket.download_file(key_name, downloaded_name)
+        
+        
+        
         if key.content_length != os.stat(downloaded_name).st_size:
             print("Size mismatch, downloading again for %s: " % downloaded_name)
             bucket.download_file(key_name[2:], downloaded_name)
