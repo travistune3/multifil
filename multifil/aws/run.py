@@ -471,7 +471,7 @@ class s3:
         >>>os.remove('test')
         """
         
-        # pdb.set_trace()
+        pdb.set_trace()
         
         # Parse name
         bucket_name = [n for n in name.split('/') if len(n) > 3][0]  # rm s3:// & /
