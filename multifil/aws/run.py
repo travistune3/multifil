@@ -81,7 +81,7 @@ class manage:
 
     def _parse_metafile_location(self, metafile):
         """Parse the passed location, downloading the metafile if necessary"""
-        pdb.set_trace()
+        # pdb.set_trace()
         if not os.path.exists(metafile):
             print("meta file not found locally, look at path_s3")
             return self.s3.pull_from_s3(metafile, self.working_dir)
@@ -471,7 +471,7 @@ class s3:
         >>>os.remove('test')
         """
         
-        pdb.set_trace()
+        # pdb.set_trace()
         
         # Parse name
         bucket_name = [n for n in name.split('/') if len(n) > 3][0]  # rm s3:// & /
