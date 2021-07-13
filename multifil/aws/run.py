@@ -49,7 +49,7 @@ class manage:
             Whether to complete the run without further intervention or treat
             as an interactive session.
         """
-        pdb.set_trace()
+        # pdb.set_trace()
         if use_aws:
             self.s3 = s3()
         else:
