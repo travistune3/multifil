@@ -224,8 +224,6 @@ def emit(path_local, path_s3, time, poisson=0.0, ls=None, z_line=None,
     ...  'z_line': None,
     ...  'z_line_func': None}
     """
-    # Ensure that the output_dir exists
-    os.makedirs(path_local, exist_ok=True)
 
     run_d = {}
     name = str(uuid.uuid1())
@@ -250,6 +248,8 @@ def emit(path_local, path_s3, time, poisson=0.0, ls=None, z_line=None,
             run_d[key] = list(value)
     # ## Write out the run description
     if write is True:
+        # Ensure that the output_dir exists
+        os.makedirs(path_local, exist_ok=True)
         try:
             output_filename = os.path.join(path_local, name + '.meta.json')
             with open(output_filename, 'w') as metafile:

@@ -10,7 +10,9 @@ from numpy import pi, sqrt, log, radians
 import math as m
 import warnings
 import numpy.random as random
-
+import numpy as np
+from scipy.linalg import expm
+import pdb
 
 class Spring:
     """A generic spring, from which we make the myosin heads"""
@@ -369,27 +371,88 @@ class Head:
             boolean: transition that occurred (as string) or None
         """
         # ## Transitions rates are checked against a random number
+
+        # construct rate matrix Q 
+        r12 = self._bind(bs)
+        r13 = 0 # Note: It is impossible to go from being unbound to tightly bound(ATP-hydrolyzed)
+        r11 = -r12 # rows should sum to zero
+        
+        r21 = self._r21(bs)
+        r23 = self._r23(bs)
+        r22 = -(r21 + r23) # rows should sum to zero
+        
+        r31 = self._r31(bs)
+        r32 = self._r32(bs)
+        r33 = -(r31 + r32) # rows should sum to zero
+        
+        # rate matrix
+        Q = np.array([[r11,r12,r13],[r21,r22,r23],[r31,r32,r33]])
+        # time step
+        dt =  self.timestep_len
+   
+        # prob matrix is P = expm(Q*dt) where is expm is matrix exponential, expm is from scipy.linalg
+        # elements are   p11, p12, p13               [0,0]  [0,1]  [0,2]
+        #                p21, p22, p23               [1,0]  [1,1]  [1,2]
+        #                p31, p32, p33               [2,0]  [2,1]  [2,2]
+                
+        # prob matrix
+        try:
+            P = expm(Q*dt)
+        except:
+            pass
+            print(np.linalg.norm(Q))
+            pdb.set_trace()
+
+        
+        # print(np.sum(P2, axis=1)) # rows in prob matrix should sum to 1
+        
+        
+
         check = random.rand()
         # ## Check for transitions depending on the current state
-        if self.state == "free":  # Note: It is impossible to go from being unbound to tightly bound(ATP-hydrolyzed)
-            if self._prob(self._bind(bs)) * ap > check:
+        if self.state == "free":  
+            if P[0,1] * ap > check: # p12
                 self.state = "loose"
                 return '12'
         elif self.state == "loose":
-            if self._prob(self._r23(bs)) > check:
+            if P[1,2] > check: # p23
                 self.state = "tight"
                 return '23'
-            elif (1 - self._prob(self._r21(bs))) < check:
+            elif (1 - P[1,0]) < check: # p21
                 self.state = "free"
                 return '21'
-        elif self.state == "tight":
-            if self._prob(self._r31(bs)) > check:
+        elif self.state == "tight": 
+            if P[2,0] > check: # p31
                 self.state = "free"
                 return '31'
-            elif (1 - self._prob(self._r32(bs))) < check:
+            elif (1 - P[2,1]) < check: # p32
                 self.state = "loose"
                 return '32'
-        # Got this far? Than no transition occurred!
+        # Got this far? Then no transition occurred!        
+
+        
+        # check = random.rand()
+        # # ## Check for transitions depending on the current state
+        # if self.state == "free":  # Note: It is impossible to go from being unbound to tightly bound(ATP-hydrolyzed)
+        #     if self._prob(self._bind(bs)) * ap > check:
+        #         self.state = "loose"
+        #         return '12'
+        # elif self.state == "loose":
+        #     if self._prob(self._r23(bs)) > check:
+        #         self.state = "tight"
+        #         return '23'
+        #     elif (1 - self._prob(self._r21(bs))) < check:
+        #         self.state = "free"
+        #         return '21'
+        # elif self.state == "tight":
+        #     if self._prob(self._r31(bs)) > check:
+        #         self.state = "free"
+        #         return '31'
+        #     elif (1 - self._prob(self._r32(bs))) < check:
+        #         self.state = "loose"
+        #         return '32'
+        # # Got this far? Than no transition occurred!
+        
         return None
 
     def axial_force(self, tip_location):
@@ -547,6 +610,11 @@ class Head:
         except ZeroDivisionError:
 
             rate = 1
+            
+        
+        if rate > 10**6:
+            rate = 10**6 # need rates to not get too big or we can't calculate P = expm(Q), expm fails if norm(Q) is large
+            
         return float(rate)
 
     def _r23(self, bs):
@@ -586,6 +654,11 @@ class Head:
             rate = _r23 / m.exp(loose_free_energy - tight_free_energy)
         except ZeroDivisionError:
             rate = 1
+            
+        
+        if rate > 10**6:
+            rate = 10**6 # need rates to not get too big or we can't calculate P = expm(Q), expm fails if norm(Q) is large
+            
         return float(rate)
 
     def _r31(self, bs):
