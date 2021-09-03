@@ -6,12 +6,10 @@ mh.py - A single myosin head
 Created by Dave Williams on 2010-01-04.
 """
 from numpy import pi, sqrt, log, radians
-import numpy as np
+
 import math as m
 import warnings
 import numpy.random as random
-from scipy.linalg import expm
-import pdb
 
 
 class Spring:
@@ -365,112 +363,7 @@ class Head:
         Returns:
             boolean: transition that occurred (as string) or None
         """
-        # new
-        #######################################################################
-        # # get all the different rates 
-        r12 = self._bind(bs) 
-        r13 = 0
-        r11 = -(r12 + r13) 
-        
-        r21 = self._r21(bs)
-        r23 = self._r23(bs)
-        r22 = -(r21 + r23)
-        
-        r31 = self._r31(bs)
-        r32 = self._r32(bs)
-        r33 = -(r31 + r32)
-        
-        # # construct rate matrix Q 
-        # Q = np.array([[r11*ap,  r12*ap,  r13],
-        #               [r21,     r22,     r23],
-        #               [r31,     r32,     r33]])
-        
-        # # ensure rows of Q sum to 0
-        # if np.allclose(np.sum(Q,1), [0,0,0]) is False:
-        #     pass
-        #     pdb.set_trace()
-        # assert(np.allclose(np.sum(Q,1), [0,0,0]))
-        
-        # # timestep dt
-        # dt = self.timestep_len
-        
-        # # prob matrix elemtns Pij give probability that if you start in state i you will end up in state j after time dt, 
-        # # expm is matrix exponential from scipy.linalg, not element wise like np.exp
-        
-        # P = expm(Q * dt)
-
-        
-        # #ensure all rows sum to 1, if not check that rows of Q sum to 0 and norm of Q is not too large
-        # assert(np.allclose(np.sum(P,1), [1,1,1]))
-        
-        # # get row i of P, corresponding to current state
-        # lookup_state = {"free": 1, "loose": 2, "tight": 3}
-        # P_ = P[lookup_state["free"]-1]
-        
-        # p12 = P[0,1]
-        # p13 = P[0,2]
-        
-        # p21 = P[1,0]
-        # p23 = P[1,2]
-        
-        # p32 = P[2,1]
-        # p31 = P[2,0]
-        # ##################################        
-        # # if r12 > 5:
-        #     # pass
-        #     # # pdb.set_trace()        
-        # try:                
-        #     with open(r'F:\Users\travi\OneDrive - UW\Daniel_Group\dump\dump.csv','ab') as f:
-        #         np.savetxt(f, [np.asarray([float(bs[0]), float(bs[1]), float(r12), float(r21), float(r23), float(r32), float(r31)])], delimiter=',', newline='')
-        #         # np.savetxt(f, [np.asarray([float(bs[0]), float(bs[1]), float(p12), float(p21), float(p23), float(p32), float(p31)])], delimiter=',', newline='')
-        #         f.write(b'\n')
-        #     f.close()
-        # except:
-        #     print('dump error')
-        #     pass
-        # ##################################
-        
-        
         # ## Transitions rates are checked against a random number
-        # check = random.rand()
-        # if P_[0] > check: # pi1
-        #     trans = str(lookup_state[self.state]) + str(1)
-        #     self.state = "free"
-        # elif P_[0] + P_[1] > check: # pi2
-        #     trans = str(lookup_state[self.state]) + str(2)
-        #     self.state = "loose"
-        # elif P_[0] + P_[1] + P_[2] > check: # pi3
-        #     trans = str(lookup_state[self.state]) + str(3)
-        #     self.state = "tight"
-        
-        # if trans in {'11','22','33'}:
-        #     return None
-        # else:
-        #     return trans
-        
-        
-        
-        # old
-        #######################################################################
-        p12 = self._prob(self._bind(bs))
-        p21 = self._prob(self._r21(bs))
-        
-        p23 = self._prob(self._r23(bs))
-        p32 = self._prob(self._r32(bs))
-        
-        p31 = self._prob(self._r31(bs)) 
-        
-        try:                
-            with open(r'F:\Users\travi\OneDrive - UW\Daniel_Group\dump\dump.csv','ab') as f:
-                np.savetxt(f, [np.asarray([float(bs[0]), float(bs[1]), float(r12), float(r21), float(r23), float(r32), float(r31)])], delimiter=',', newline='')
-                # np.savetxt(f, [np.asarray([float(bs[0]), float(bs[1]), float(p12), float(p21), float(p23), float(p32), float(p31)])], delimiter=',', newline='')
-                f.write(b'\n')
-            f.close()
-        except:
-            print('dump error')
-            pass
-        
-        ## Transitions rates are checked against a random number
         check = random.rand()
         # ## Check for transitions depending on the current state
         if self.state == "free":  # Note: It is impossible to go from being unbound to tightly bound(ATP-hydrolyzed)
@@ -493,21 +386,6 @@ class Head:
                 return '32'
         # Got this far? Than no transition occurred!
         return None
-        #######################################################################
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
 
     def axial_force(self, tip_location):
         """Find the axial force a Head generates at a given location
@@ -628,6 +506,7 @@ class Head:
         # ## Find the distance to the binding site
         tip = self.unbound_tip_loc
         distance = m.hypot(bs[0] - tip[0], bs[1] - tip[1])
+
         # ## The binding rate is dependent on the exp of the dist
         # Rate = \tau * \exp^{-dist^2}
         rate = 72 * m.exp(-distance ** 2)
@@ -652,11 +531,11 @@ class Head:
         # ## Rate, as in pg 1209 of Tanner et al, 2007
         # ## With added reduced-detachment factor, increases dwell time
         try:
-            rate = self._bind(bs)/ m.exp(
+            rate = self._bind(bs) / m.exp(
                 unbound_free_energy - loose_free_energy)
         except ZeroDivisionError:
+
             rate = 1
-        rate = np.clip(rate, a_min=None, a_max=10**6)   # set max value to 10^6  
         return float(rate)
 
     def _r23(self, bs):
@@ -686,13 +565,10 @@ class Head:
         # ## Governed as in self_p21
         loose_free_energy = self._free_energy(bs, "loose")
         tight_free_energy = self._free_energy(bs, "tight")
-        # r23 = np.clip(self._r23(bs), a_min = 0, a_max = None)
-        
         try:
             rate = self._r23(bs) / m.exp(loose_free_energy - tight_free_energy)
         except ZeroDivisionError:
             rate = 1
-        rate = np.clip(rate, a_min=None, a_max=10**6)   # set max value to 10^6
         return float(rate)
 
     def _r31(self, bs):
@@ -865,62 +741,7 @@ class Crossbridge(Head):
         Returns:
             transition: string of transition ('12', '32', etc.) or None
         """
-        
-        # new
-        #######################################################################
-        # # get trans
-        # if self.bound_to is None:
-        #     # Find the lattice spacing
-        #     lattice_spacing = self._current_ls
-        #     # Find this cross-bridge's axial location
-        #     cr_axial_loc = self.axial_location
-        #     # Find the potential binding site
-        #     actin_site = self.thin_face.nearest(cr_axial_loc + self.unbound_tip_loc[0])  # closest to the myosin head
-        #     actin_axial_loc = actin_site.axial_location
-        #     actin_state = actin_site.permissiveness
-        #     # Find the axial separation
-        #     axial_sep = actin_axial_loc - cr_axial_loc
-        #     # Combine the two distances
-        #     distance_to_site = (axial_sep, lattice_spacing)
-        #     # Allow the myosin head to take it from here
-        #     trans = super(Crossbridge, self).transition(distance_to_site,
-        #                                                 actin_state)
-        # else:
-        #     # Get the distance to the actin site
-        #     distance_to_site = self._dist_to_bound_actin()
-        #     actin_state = self.bound_to.permissiveness
-        #     # Allow the myosin head to take it from here
-        #     trans = super(Crossbridge, self).transition(distance_to_site,
-        #                                                 actin_state)
-        
-        
-        # # binding states are from {1} to {2,3}
-        # if trans in {'12','13'}:
-        #     self.bound_to = actin_site.bind_to(self)
-        #     if self.bound_to is None:
-        #         self.state = 'free'  # failed to bind TODO fix this garbage
-        #         import sys
-        #         msg = "\n---successfully denied---\n"
-        #         sys.stdout.write(msg)
-        #         sys.stdout.flush()
-        #     # assert(self.bound_to.bound_to is not None)
-            
-        # # unbinding states are from {2,3} to {1}
-        # elif trans in {'21','31'}:
-        #     self.bound_to = self.bound_to.unbind()
-        #     assert (self.bound_to is None)
-            
-        # # {11,22,33} and {23,32} need no change to binding status
-        # else:
-        #     assert trans in {'23', '32', None}
-            
-        # return trans
-        #######################################################################
-        
-
-        # old
-        #######################################################################
-          # When unbound, try to bind, otherwise just try a transition
+        # When unbound, try to bind, otherwise just try a transition
         if self.bound_to is None:
             # Find the lattice spacing
             lattice_spacing = self._current_ls
@@ -963,7 +784,6 @@ class Crossbridge(Head):
             else:
                 assert (trans in {'23', '32', None}), 'State mismatch'
         return trans
-        #######################################################################
 
     def axial_force(self, base_axial_loc=None, tip_axial_loc=None):
         """Gather needed information and return the axial force

@@ -620,6 +620,7 @@ class hs:
         # Update bound states
         self.last_transitions = [thick.transition() for thick in self.thick]
         # self.update_concentrations()
+        # pdb.set_trace()
         self.tm_transitions = [thin.transition() for thin in self.thin]  # TODO: work into storage
 
         # Settle forces

@@ -398,6 +398,8 @@ class data_file:
         ad("tm_closed", tm_fracs[2])
         ad("tm_open", tm_fracs[3])
         ad('titin_axial_force', self.sarc.titin_axial_force())
+        
+        # pdb.set_trace()
         # ad('tm_rate_12', tm_rates['tm_rate_12'])
         # ad('tm_rate_21', tm_rates['tm_rate_21'])
         # ad('tm_rate_23', tm_rates['tm_rate_23'])
